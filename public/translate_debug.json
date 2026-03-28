@@ -1,0 +1,13 @@
+{
+    "request": {
+        "text": "A vossa atenção por favor, falta exatamente uma sema para a abertura do parque!",
+        "target": "pt",
+        "source": null
+    },
+    "response": {
+        "source": "pt",
+        "input": "A vossa atenção por favor, falta exatamente uma sema para a abertura do parque!",
+        "text": "A vossa atenção por favor, falta exatamente uma sema para a abertura do parque!",
+        "model": null
+    }
+}

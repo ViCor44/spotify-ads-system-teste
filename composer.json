@@ -1,0 +1,20 @@
+{
+    "name": "seu-nome/spotify-ads-system",
+    "description": "Sistema de anuncios com a API do Spotify.",
+    "require": {
+        "guzzlehttp/guzzle": "^7.0",
+        "james-heinrich/getid3": "^1.9",
+        "google/cloud-text-to-speech": "1.4",
+        "google/cloud-translate": "1.14"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "scripts": {
+        "post-autoload-dump": [
+            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
+        ]
+    }
+}

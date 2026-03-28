@@ -1,0 +1,2 @@
+file 'C:\xampp\htdocs\spotify-ads-system\api/../storage/tmp_tts/part_0_68b961478fa19.mp3'
+file 'C:\xampp\htdocs\spotify-ads-system\api/../storage/tmp_tts/part_1_68b961478fefc.mp3'
