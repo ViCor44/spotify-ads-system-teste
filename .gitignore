@@ -1,2 +1,5 @@
 public/robot_heartbeat.log
 config/
+key.pem
+cert.pem
+*.log
