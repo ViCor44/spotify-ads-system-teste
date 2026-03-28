@@ -1,5 +1,8 @@
 public/robot_heartbeat.log
+public/traslate_debug.json
 config/
+storage/
+uploads/
 key.pem
 cert.pem
 *.log
