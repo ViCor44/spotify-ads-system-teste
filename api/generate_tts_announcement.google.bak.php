@@ -1,13 +1,10 @@
 <?php
 // api/generate_tts_announcement.php
-// Versão ElevenLabs (substitui o uso do translate.google.com como TTS).
 session_start();
 require_once __DIR__ . '/../vendor/autoload.php';
-require_once __DIR__ . '/../config/database.php';
-
 use App\Database;
 use App\SpotifyClient;
-use GuzzleHttp\Client as HttpClient;
+use GuzzleHttp\Client;
 use getID3;
 
 // --- FUNÇÃO AUXILIAR PARA CONVERTER NÚMEROS EM TEXTO (PORTUGUÊS) ---
@@ -23,62 +20,6 @@ function numeroParaExtensoPT($n) {
     return $dezenas[$dezena] . ($unidade > 0 ? " e " . $unidades[$unidade] : "");
 }
 
-/** Sintetiza voz via ElevenLabs (MP3). */
-function elevenlabs_synthesize_basic(string $text): string {
-    if (!defined('ELEVENLABS_API_KEY') || ELEVENLABS_API_KEY === '' || ELEVENLABS_API_KEY === 'SUBSTITUIR_PELA_API_KEY_DA_ELEVENLABS') {
-        throw new Exception("ELEVENLABS_API_KEY não configurada em config/database.php.");
-    }
-    $voiceId = defined('ELEVENLABS_VOICE_ID') ? ELEVENLABS_VOICE_ID : '21m00Tcm4TlvDq8ikWAM';
-    $modelId = defined('ELEVENLABS_MODEL_ID') ? ELEVENLABS_MODEL_ID : 'eleven_multilingual_v2';
-
-    static $http = null;
-    if ($http === null) {
-        $http = new HttpClient([
-            'base_uri'    => 'https://api.elevenlabs.io/',
-            'http_errors' => false,
-            'timeout'     => 60,
-        ]);
-    }
-
-    $resp = $http->post('v1/text-to-speech/' . rawurlencode($voiceId), [
-        'headers' => [
-            'xi-api-key'   => ELEVENLABS_API_KEY,
-            'Accept'       => 'audio/mpeg',
-            'Content-Type' => 'application/json',
-        ],
-        'query' => [ 'output_format' => 'mp3_44100_128' ],
-        'json' => [
-            'text'           => $text,
-            'model_id'       => $modelId,
-            'voice_settings' => [
-                'stability'         => 0.45,
-                'similarity_boost'  => 0.85,
-                'style'             => 0.20,
-                'use_speaker_boost' => true,
-            ],
-        ],
-    ]);
-
-    $status = $resp->getStatusCode();
-    $body   = (string) $resp->getBody();
-
-    if ($status !== 200) {
-        $errMsg  = $body;
-        $decoded = json_decode($body, true);
-        if (is_array($decoded)) {
-            if (isset($decoded['detail']['message'])) $errMsg = $decoded['detail']['message'];
-            elseif (isset($decoded['detail']))       $errMsg = is_string($decoded['detail']) ? $decoded['detail'] : json_encode($decoded['detail']);
-            elseif (isset($decoded['message']))      $errMsg = $decoded['message'];
-        }
-        throw new Exception("ElevenLabs falhou (HTTP $status): " . substr($errMsg, 0, 500));
-    }
-
-    if ($body === '' || strpos($resp->getHeaderLine('Content-Type'), 'audio') === false) {
-        throw new Exception("ElevenLabs devolveu resposta inválida (Content-Type: " . $resp->getHeaderLine('Content-Type') . ").");
-    }
-    return $body;
-}
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
     
     $_SESSION['last_tts_data'] = $_POST; // Guarda os dados para repopular o formulário
@@ -88,10 +29,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
     $textToLog = '';
     
     // --- MAPA DE CONFIGURAÇÃO MULTILINGUE COMPLETO ---
-    // Nota: com a ElevenLabs (eleven_multilingual_v2) usamos a mesma voz para todos
-    // os idiomas — basta enviar o texto na língua certa.
     $langConfig = [
         'pt' => [
+            'code' => 'pt-pt',
             'plate_text' => "Atenção ao proprietário do veículo %s %s, com a matrícula %s,. Repito, %s. Por favor, dirija-se à receção. Obrigado",
             'child_text' => "Atenção, solicitamos a presença dos pais ou responsáveis da criança %s na receção. Obrigado",
             'person_text' => "Atenção, solicitamos a presença de %s na receção. Obrigado",
@@ -99,16 +39,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
             'numberFormatter' => 'numeroParaExtensoPT'
         ],
         'en' => [
+            'code' => 'en-gb',
             'plate_text' => "Attention to the owner of the %s %s, with license plate %s,. I repeat, %s. Please proceed to the reception. Thank you",
             'child_text' => "Attention, we request the presence of the parents or guardians of the child %s at the reception. Thank you",
             'person_text' => "Attention, we request the presence of %s at the reception. Thank you"
         ],
         'es' => [
+            'code' => 'es-es',
             'plate_text' => "Atención al propietario del vehículo %s %s, con matrícula %s,. Repito, %s. Por favor, diríjase a recepción. Gracias",
             'child_text' => "Atención, solicitamos la presencia de los padres o responsables del niño %s en la recepción. Gracias",
             'person_text' => "Atención, solicitamos la presencia de %s en la recepción. Gracias"
         ],
         'fr' => [
+            'code' => 'fr-fr',
             'plate_text' => "Attention au propriétaire du véhicule %s %s, avec la plaque d'immatriculation %s,. Je répète, %s. Veuillez vous présenter à la réception. Merci",
             'child_text' => "Attention, nous demandons la présence des parents ou tuteurs de l'enfant %s à la réception. Merci",
             'person_text' => "Attention, nous demandons la présence de %s à la réception. Merci"
@@ -116,6 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
     ];
 
     $ttsAudioContent = '';
+    $client = new Client(['http_errors' => false]);
 
     try {
         foreach ($selectedLanguages as $lang) {
@@ -142,6 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
                     }
                 }
                 $plateSpelled = implode(', ', $spelledParts);
+                // A função sprintf agora recebe a matrícula duas vezes
                 $textToSpeech = sprintf($config['plate_text'], $make, $model, $plateSpelled, $plateSpelled);
 
             } elseif ($announcementType === 'child' && !empty($_POST['child_name'])) {
@@ -156,7 +101,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
             }
 
             if (!empty($textToSpeech)) {
-                $ttsAudioContent .= elevenlabs_synthesize_basic($textToSpeech);
+                $response = $client->get('https://translate.google.com/translate_tts', [
+                    'query' => [ 'ie' => 'UTF-8', 'q' => $textToSpeech, 'tl' => $config['code'], 'client' => 'gtx' ],
+                    'headers' => [ 'User-Agent' => 'Mozilla/5.0' ]
+                ]);
+                
+                if ($response->getStatusCode() !== 200 || strpos($response->getHeaderLine('Content-Type'), 'audio/mpeg') === false) {
+                     die("Ocorreu um erro ao gerar o anúncio: A API de TTS devolveu um áudio inválido.");
+                }
+
+                $ttsAudioContent .= $response->getBody()->getContents();
             }
         }
 
@@ -199,3 +153,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
     header('Location: ../public/index.php?page=tts_announcement');
     exit();
 }
+

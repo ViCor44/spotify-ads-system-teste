@@ -1,13 +1,13 @@
 {
     "request": {
-        "text": "A vossa atenção por favor, falta exatamente uma sema para a abertura do parque!",
+        "text": "Atenção pede-se a comparência",
         "target": "pt",
         "source": null
     },
     "response": {
         "source": "pt",
-        "input": "A vossa atenção por favor, falta exatamente uma sema para a abertura do parque!",
-        "text": "A vossa atenção por favor, falta exatamente uma sema para a abertura do parque!",
+        "input": "Atenção pede-se a comparência",
+        "text": "Atenção pede-se a comparência",
         "model": null
     }
 }
