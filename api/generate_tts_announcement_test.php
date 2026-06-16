@@ -193,7 +193,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
     // Lê e normaliza idiomas escolhidos
     $selectedLanguages = $_POST['languages'] ?? [];
     if (!is_array($selectedLanguages)) $selectedLanguages = [$selectedLanguages];
-    $supported = ['pt','en','es','fr'];
+    $supported = ['pt','en','es','fr','de','it','nl','pl'];
     $selectedLanguages = array_values(array_intersect($selectedLanguages, $supported));
     if (empty($selectedLanguages)) $selectedLanguages = ['pt'];
 
@@ -253,10 +253,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
             'child_text'  => "Attention, nous demandons la présence des parents ou tuteurs de l'enfant %s. Je répète, %s. à la réception. Merci",
             'person_text' => "Attention, nous demandons la présence de %s. Je répète, %s. à la réception. Merci",
         ],
+        'de' => [
+            'plate_text'  => "Achtung an den Eigentümer des Fahrzeugs %s %s, mit dem Kennzeichen %s. Ich wiederhole, %s. Bitte begeben Sie sich zur Rezeption. Danke",
+            'child_text'  => "Achtung, wir bitten die Eltern oder Erziehungsberechtigten des Kindes %s. Ich wiederhole, %s. zur Rezeption zu kommen. Danke",
+            'person_text' => "Achtung, wir bitten %s. Ich wiederhole, %s. sich an die Rezeption zu begeben. Danke",
+        ],
+        'it' => [
+            'plate_text'  => "Attenzione al proprietario del veicolo %s %s, con targa %s. Ripeto, %s. Si prega di recarsi alla reception. Grazie",
+            'child_text'  => "Attenzione, chiediamo la presenza dei genitori o dei tutori del bambino %s. Ripeto, %s. alla reception. Grazie",
+            'person_text' => "Attenzione, chiediamo la presenza di %s. Ripeto, %s. alla reception. Grazie",
+        ],
+        'nl' => [
+            'plate_text'  => "Aandacht aan de eigenaar van het voertuig %s %s, met kenteken %s. Ik herhaal, %s. Gelieve u te melden bij de receptie. Bedankt",
+            'child_text'  => "Aandacht, wij verzoeken de aanwezigheid van de ouders of voogden van het kind %s. Ik herhaal, %s. bij de receptie. Bedankt",
+            'person_text' => "Aandacht, wij verzoeken de aanwezigheid van %s. Ik herhaal, %s. bij de receptie. Bedankt",
+        ],
+        'pl' => [
+            'plate_text'  => "Uwaga dla właściciela pojazdu %s %s, o numerze rejestracyjnym %s. Powtarzam, %s. Proszę zgłosić się do recepcji. Dziękujemy",
+            'child_text'  => "Uwaga, prosimy o obecność rodziców lub opiekunów dziecka %s. Powtarzam, %s. w recepcji. Dziękujemy",
+            'person_text' => "Uwaga, prosimy o obecność %s. Powtarzam, %s. w recepcji. Dziękujemy",
+        ],
     ];
 
     // Alvos para Translate (ISO-639-1)
-    $translateTarget = ['pt'=>'pt','en'=>'en','es'=>'es','fr'=>'fr'];
+    $translateTarget = ['pt'=>'pt','en'=>'en','es'=>'es','fr'=>'fr','de'=>'de','it'=>'it','nl'=>'nl','pl'=>'pl'];
 
     // Construção dos textos por idioma
     $segments = []; // cada item: ['lang', 'text']

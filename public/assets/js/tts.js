@@ -165,28 +165,4 @@ document.addEventListener('DOMContentLoaded', function () {
         refreshDefaultBtnState(btn);
     });
 
-    // ---- Ativar/desativar linha consoante o checkbox do idioma ----
-    function syncLangRowStates() {
-        const checked = new Set(
-            Array.from(ttsForm.querySelectorAll('input[name="languages[]"]:checked'))
-                 .map(cb => cb.value)
-        );
-        document.querySelectorAll('.voice-lang-row').forEach(row => {
-            const lang = row.getAttribute('data-lang');
-            const active = checked.has(lang);
-            row.classList.toggle('is-active', active);
-            row.classList.toggle('is-disabled', !active);
-
-            row.querySelectorAll('.voice-accent-filter').forEach(el => {
-                el.disabled = !active;
-            });
-            // O select de voz fica disponível para o utilizador poder predefinir
-            // mesmo um idioma que não esteja ativo agora.
-        });
-    }
-
-    ttsForm.querySelectorAll('input[name="languages[]"]').forEach(cb => {
-        cb.addEventListener('change', syncLangRowStates);
-    });
-    syncLangRowStates();
 });

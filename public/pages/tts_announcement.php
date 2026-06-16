@@ -84,6 +84,26 @@ function classifyVoiceAccent(array $v): array {
         return ['key' => 'fr-fr', 'label' => 'Francês'];
     }
 
+    // Alemão
+    if (strpos($haystack, 'german') !== false || strpos($haystack, 'deutsch') !== false || strpos($haystack, 'de-') !== false) {
+        return ['key' => 'de-de', 'label' => 'Alemão'];
+    }
+
+    // Italiano
+    if (strpos($haystack, 'italian') !== false || strpos($haystack, 'italia') !== false || strpos($haystack, 'it-') !== false) {
+        return ['key' => 'it-it', 'label' => 'Italiano'];
+    }
+
+    // Holandês
+    if (strpos($haystack, 'dutch') !== false || strpos($haystack, 'nederland') !== false || strpos($haystack, 'nl-') !== false) {
+        return ['key' => 'nl-nl', 'label' => 'Holandês'];
+    }
+
+    // Polaco
+    if (strpos($haystack, 'polish') !== false || strpos($haystack, 'polski') !== false || strpos($haystack, 'pl-') !== false) {
+        return ['key' => 'pl-pl', 'label' => 'Polaco'];
+    }
+
     return ['key' => 'other', 'label' => 'Outro / Multilingue'];
 }
 
@@ -93,8 +113,18 @@ foreach ($ttsVoices as &$_v) {
 }
 unset($_v);
 
-// Ordena: primeiro PT-PT, depois PT (genérico), depois PT-BR, depois outros
-$accentOrder = ['pt-pt' => 0, 'pt' => 1, 'pt-br' => 2, 'es-es' => 3, 'es-419' => 4, 'en-gb' => 5, 'en-us' => 6, 'en' => 7, 'fr-fr' => 8, 'other' => 9];
+// Ordena: primeiro PT-PT, depois variantes PT, depois outros idiomas comuns
+$accentOrder = [
+    'pt-pt' => 0, 'pt' => 1, 'pt-br' => 2,
+    'es-es' => 3, 'es-419' => 4,
+    'en-gb' => 5, 'en-us' => 6, 'en' => 7,
+    'fr-fr' => 8,
+    'de-de' => 9,
+    'it-it' => 10,
+    'nl-nl' => 11,
+    'pl-pl' => 12,
+    'other' => 99,
+];
 usort($ttsVoices, function ($a, $b) use ($accentOrder) {
     $oa = $accentOrder[$a['_accent']['key']] ?? 99;
     $ob = $accentOrder[$b['_accent']['key']] ?? 99;
@@ -132,6 +162,26 @@ $languageDefs = [
         'label'           => 'Francês',
         'flag'            => 'FR',
         'preferred_accents' => ['fr-fr'],
+    ],
+    'de' => [
+        'label'           => 'Alemão',
+        'flag'            => 'DE',
+        'preferred_accents' => ['de-de'],
+    ],
+    'it' => [
+        'label'           => 'Italiano',
+        'flag'            => 'IT',
+        'preferred_accents' => ['it-it'],
+    ],
+    'nl' => [
+        'label'           => 'Holandês',
+        'flag'            => 'NL',
+        'preferred_accents' => ['nl-nl'],
+    ],
+    'pl' => [
+        'label'           => 'Polaco',
+        'flag'            => 'PL',
+        'preferred_accents' => ['pl-pl'],
     ],
 ];
 
@@ -250,6 +300,14 @@ foreach ($languageDefs as $lang => $def) {
             <label for="lang-es">Espanhol</label>
             <input type="checkbox" name="languages[]" value="fr" id="lang-fr" <?= in_array('fr', $lastLangs) ? 'checked' : '' ?>>
             <label for="lang-fr">Francês</label>
+            <input type="checkbox" name="languages[]" value="de" id="lang-de" <?= in_array('de', $lastLangs) ? 'checked' : '' ?>>
+            <label for="lang-de">Alemão</label>
+            <input type="checkbox" name="languages[]" value="it" id="lang-it" <?= in_array('it', $lastLangs) ? 'checked' : '' ?>>
+            <label for="lang-it">Italiano</label>
+            <input type="checkbox" name="languages[]" value="nl" id="lang-nl" <?= in_array('nl', $lastLangs) ? 'checked' : '' ?>>
+            <label for="lang-nl">Holandês</label>
+            <input type="checkbox" name="languages[]" value="pl" id="lang-pl" <?= in_array('pl', $lastLangs) ? 'checked' : '' ?>>
+            <label for="lang-pl">Polaco</label>
         </div>
         
         <p style="font-size: 0.9em; color: #6c757d; margin-top: -10px; margin-bottom: 20px;">Pelo menos um idioma deve ser selecionado.</p>
@@ -265,10 +323,8 @@ foreach ($languageDefs as $lang => $def) {
             </p>
         <?php else: ?>
             <div class="voices-by-lang">
-            <?php foreach ($voiceByLangState as $lang => $st):
-                $isLangChecked = in_array($lang, $lastLangs, true);
-            ?>
-                <div class="voice-lang-row <?= $isLangChecked ? 'is-active' : 'is-disabled' ?>"
+            <?php foreach ($voiceByLangState as $lang => $st): ?>
+                <div class="voice-lang-row"
                      data-lang="<?= htmlspecialchars($lang) ?>">
                     <div class="voice-lang-head">
                         <span class="lang-flag"><?= htmlspecialchars($st['flag']) ?></span>
@@ -325,7 +381,7 @@ foreach ($languageDefs as $lang => $def) {
 
             <p class="gong-hint">
                 <strong>Dica:</strong> defina uma voz por idioma e clique em <em>Predefinir</em> para guardar. Da próxima vez aparece já selecionada.
-                As linhas dos idiomas não selecionados acima ficam desativadas — mas o seu valor é guardado para uso futuro.
+                Só os idiomas marcados em cima entram no anúncio gerado — mas pode predefinir a voz de qualquer idioma a qualquer momento.
             </p>
         <?php endif; ?>
 
@@ -485,15 +541,6 @@ foreach ($languageDefs as $lang => $def) {
     border: 1px solid #e5e7eb;
     border-radius: 12px;
     background: #fff;
-    transition: opacity .15s ease, background-color .15s ease;
-  }
-  .voice-lang-row.is-disabled {
-    opacity: .55;
-    background: #f9fafb;
-  }
-  .voice-lang-row.is-active {
-    background: #fff;
-    border-color: #d1d5db;
   }
   .voice-lang-head {
     display: flex;
