@@ -201,6 +201,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
     $customText = trim($_POST['custom_text'] ?? '');
     $playGong   = !empty($_POST['custom_gong']);
 
+    // Voz escolhida pelo utilizador (valida contra a lista da ElevenLabs)
+    $defaultVoiceId = defined('ELEVENLABS_VOICE_ID') ? ELEVENLABS_VOICE_ID : '';
+    $selectedVoiceId = trim((string) ($_POST['voice_id'] ?? ''));
+    if ($selectedVoiceId !== '') {
+        require_once __DIR__ . '/list_elevenlabs_voices.php';
+        try {
+            $availableVoices = get_elevenlabs_voices();
+            $validIds = array_column($availableVoices, 'voice_id');
+            if (!in_array($selectedVoiceId, $validIds, true)) {
+                $selectedVoiceId = $defaultVoiceId;
+            }
+        } catch (Throwable $e) {
+            // Se não conseguirmos validar, aceitamos o valor (formato voice_id da ElevenLabs)
+            if (!preg_match('/^[A-Za-z0-9]{16,}$/', $selectedVoiceId)) {
+                $selectedVoiceId = $defaultVoiceId;
+            }
+        }
+    } else {
+        $selectedVoiceId = $defaultVoiceId;
+    }
+
     // Config de línguas (sem voz: a ElevenLabs usa a mesma voz multilingue)
     $langConfig = [
         'pt' => [
@@ -293,7 +314,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
         }
 
         // =================== Cache ===================
-        $voiceId = defined('ELEVENLABS_VOICE_ID') ? ELEVENLABS_VOICE_ID : '';
+        $voiceId = $selectedVoiceId !== '' ? $selectedVoiceId : (defined('ELEVENLABS_VOICE_ID') ? ELEVENLABS_VOICE_ID : '');
         $modelId = defined('ELEVENLABS_MODEL_ID') ? ELEVENLABS_MODEL_ID : '';
 
         // Parâmetros de áudio uniformes (para concatenar PCM sem clicks)

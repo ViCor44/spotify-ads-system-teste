@@ -1,9 +1,30 @@
 <?php
 // public/pages/tts_announcement.php
+require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../api/list_elevenlabs_voices.php';
+
 $lastData = $_SESSION['last_tts_data'] ?? [];
 $defaultGong = array_key_exists('custom_gong', $lastData)
     ? (int)!empty($lastData['custom_gong'])
     : 1; // <- predefinição ligada
+
+// Carrega vozes ElevenLabs (com cache). Em caso de falha, mostra apenas a voz default.
+$ttsVoices  = [];
+$voicesError = null;
+try {
+    $ttsVoices = get_elevenlabs_voices();
+} catch (Throwable $e) {
+    $voicesError = $e->getMessage();
+}
+$defaultVoiceId  = defined('ELEVENLABS_VOICE_ID') ? ELEVENLABS_VOICE_ID : '';
+$selectedVoiceId = $lastData['voice_id'] ?? $defaultVoiceId;
+
+// Agrupa por categoria (premade / cloned / generated / professional ...)
+$voicesByCategory = [];
+foreach ($ttsVoices as $v) {
+    $cat = $v['category'] !== '' ? $v['category'] : 'outras';
+    $voicesByCategory[$cat][] = $v;
+}
 ?>
 <h1><i class="fa-solid fa-microphone-lines"></i> Anúncio Dinâmico (Texto para Voz)</h1>
 <p>Selecione o tipo de anúncio, preencha a informação e selecione os idiomas desejados.</p>
@@ -80,6 +101,50 @@ $defaultGong = array_key_exists('custom_gong', $lastData)
         </div>
         
         <p style="font-size: 0.9em; color: #6c757d; margin-top: -10px; margin-bottom: 20px;">Pelo menos um idioma deve ser selecionado.</p>
+
+        <!-- Seletor de Voz (ElevenLabs) -->
+        <label for="voice_id">Voz do Anúncio:</label>
+        <div class="voice-row">
+            <select id="voice_id" name="voice_id" class="voice-select">
+                <?php if (empty($ttsVoices)): ?>
+                    <option value="<?= htmlspecialchars($defaultVoiceId) ?>" selected>
+                        Voz predefinida (<?= htmlspecialchars($defaultVoiceId ?: 'sem voz configurada') ?>)
+                    </option>
+                <?php else: ?>
+                    <?php foreach ($voicesByCategory as $cat => $list): ?>
+                        <optgroup label="<?= htmlspecialchars(ucfirst($cat)) ?>">
+                            <?php foreach ($list as $v):
+                                $labelBits = [];
+                                if (!empty($v['labels']['gender']))      $labelBits[] = $v['labels']['gender'];
+                                if (!empty($v['labels']['accent']))      $labelBits[] = $v['labels']['accent'];
+                                if (!empty($v['labels']['description'])) $labelBits[] = $v['labels']['description'];
+                                $extra = $labelBits ? ' — ' . implode(', ', $labelBits) : '';
+                                $isDefault = ($v['voice_id'] === $defaultVoiceId);
+                            ?>
+                                <option value="<?= htmlspecialchars($v['voice_id']) ?>"
+                                    <?= ($v['voice_id'] === $selectedVoiceId) ? 'selected' : '' ?>
+                                    data-preview="<?= htmlspecialchars($v['preview_url']) ?>">
+                                    <?= htmlspecialchars($v['name'] . $extra) ?><?= $isDefault ? ' (predefinida)' : '' ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </optgroup>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </select>
+            <button type="button" id="preview-voice-btn" class="preview-btn" title="Ouvir amostra da voz">
+                <i class="fa-solid fa-play"></i> Pré-visualizar
+            </button>
+        </div>
+        <?php if ($voicesError): ?>
+            <p class="gong-hint" style="color:#b91c1c;">
+                Não foi possível obter a lista de vozes da ElevenLabs: <?= htmlspecialchars($voicesError) ?>
+            </p>
+        <?php else: ?>
+            <p class="gong-hint">A mesma voz é usada em todos os idiomas selecionados.</p>
+        <?php endif; ?>
+
+        <audio id="voice-preview-player" preload="none" style="display:none;"></audio>
+
         <button id="generate-btn" type="submit">Gerar e Tocar Anúncio</button>
     </form>
 </div>
@@ -143,6 +208,44 @@ $defaultGong = array_key_exists('custom_gong', $lastData)
     color: #6b7280;
     margin-left: 26px;     /* alinha com o texto da opção */
   }
+
+  /* Seletor de voz */
+  .voice-row {
+    display: flex;
+    gap: 10px;
+    align-items: stretch;
+    margin-bottom: 6px;
+  }
+  .voice-select {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+    font-size: 0.95rem;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,.04);
+  }
+  .voice-select:focus {
+    outline: none;
+    border-color: #22c55e;
+    box-shadow: 0 0 0 4px rgba(34,197,94,.15), inset 0 1px 2px rgba(0,0,0,.04);
+  }
+  .preview-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    background: #f9fafb;
+    color: #111827;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color .15s ease, border-color .15s ease;
+  }
+  .preview-btn:hover    { background: #f3f4f6; border-color: #9ca3af; }
+  .preview-btn:disabled { opacity: .6; cursor: not-allowed; }
+  .preview-btn.playing  { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
 </style>
 
 

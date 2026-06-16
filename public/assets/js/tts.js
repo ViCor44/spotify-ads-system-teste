@@ -53,4 +53,58 @@ document.addEventListener('DOMContentLoaded', function() {
             generateBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> A gerar áudio...';
         }
     });
+
+    // --- Pré-visualização da voz selecionada (ElevenLabs) ---
+    const voiceSelect    = document.getElementById('voice_id');
+    const previewBtn     = document.getElementById('preview-voice-btn');
+    const previewPlayer  = document.getElementById('voice-preview-player');
+
+    function setPreviewPlaying(isPlaying) {
+        if (!previewBtn) return;
+        previewBtn.classList.toggle('playing', isPlaying);
+        previewBtn.innerHTML = isPlaying
+            ? '<i class="fa-solid fa-stop"></i> Parar'
+            : '<i class="fa-solid fa-play"></i> Pré-visualizar';
+    }
+
+    function currentPreviewUrl() {
+        if (!voiceSelect) return '';
+        const opt = voiceSelect.options[voiceSelect.selectedIndex];
+        return opt ? (opt.getAttribute('data-preview') || '') : '';
+    }
+
+    if (previewBtn && voiceSelect && previewPlayer) {
+        previewBtn.addEventListener('click', function () {
+            if (!previewPlayer.paused) {
+                previewPlayer.pause();
+                previewPlayer.currentTime = 0;
+                setPreviewPlaying(false);
+                return;
+            }
+            const url = currentPreviewUrl();
+            if (!url) {
+                alert('Esta voz não tem amostra de pré-visualização disponível.');
+                return;
+            }
+            previewPlayer.src = url;
+            previewPlayer.play().then(() => setPreviewPlaying(true))
+                .catch(err => {
+                    console.error('Erro a reproduzir pré-visualização:', err);
+                    setPreviewPlaying(false);
+                });
+        });
+
+        previewPlayer.addEventListener('ended', () => setPreviewPlaying(false));
+        previewPlayer.addEventListener('pause', () => {
+            if (previewPlayer.currentTime === 0) setPreviewPlaying(false);
+        });
+
+        voiceSelect.addEventListener('change', () => {
+            if (!previewPlayer.paused) {
+                previewPlayer.pause();
+                previewPlayer.currentTime = 0;
+            }
+            setPreviewPlaying(false);
+        });
+    }
 });
