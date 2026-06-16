@@ -6,7 +6,7 @@ if (!function_exists('tts_settings_path')) {
 
     /** Idiomas suportados no UI do anúncio. */
     function tts_supported_langs(): array {
-        return ['pt', 'en', 'es', 'fr', 'de', 'it', 'nl', 'pl'];
+        return ['pt', 'en', 'es', 'fr'];
     }
 
     function tts_settings_path(): string {
