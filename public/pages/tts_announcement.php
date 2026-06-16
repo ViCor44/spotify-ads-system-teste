@@ -17,13 +17,108 @@ try {
     $voicesError = $e->getMessage();
 }
 $defaultVoiceId  = defined('ELEVENLABS_VOICE_ID') ? ELEVENLABS_VOICE_ID : '';
-$selectedVoiceId = $lastData['voice_id'] ?? $defaultVoiceId;
+$selectedVoiceId = $lastData['voice_id'] ?? '';
 
-// Agrupa por categoria (premade / cloned / generated / professional ...)
-$voicesByCategory = [];
+/**
+ * Tenta identificar o sotaque/idioma de uma voz a partir dos labels da ElevenLabs.
+ * Devolve uma chave normalizada (ex.: 'pt-pt', 'pt-br', 'en-gb', 'en-us', 'es-es', 'fr-fr', 'other').
+ */
+function classifyVoiceAccent(array $v): array {
+    $labels = is_array($v['labels'] ?? null) ? $v['labels'] : [];
+    $haystack = strtolower(implode(' | ', [
+        $v['name'] ?? '',
+        $labels['accent']      ?? '',
+        $labels['description'] ?? '',
+        $labels['language']    ?? '',
+        $labels['use_case']    ?? '',
+    ]));
+
+    // Português
+    $isPortuguese =
+        strpos($haystack, 'portug') !== false ||
+        strpos($haystack, 'pt-') !== false ||
+        strpos($haystack, ' pt ') !== false ||
+        strpos($haystack, 'brazil') !== false ||
+        strpos($haystack, 'brasil') !== false;
+
+    if ($isPortuguese) {
+        $isPT = (
+            strpos($haystack, 'portugal') !== false ||
+            strpos($haystack, 'european') !== false ||
+            strpos($haystack, 'pt-pt') !== false ||
+            strpos($haystack, 'lusitan') !== false
+        );
+        $isBR = (
+            strpos($haystack, 'brazil') !== false ||
+            strpos($haystack, 'brasil') !== false ||
+            strpos($haystack, 'pt-br') !== false
+        );
+        if ($isPT && !$isBR) return ['key' => 'pt-pt', 'label' => 'Português (Portugal)'];
+        if ($isBR && !$isPT) return ['key' => 'pt-br', 'label' => 'Português (Brasil)'];
+        return ['key' => 'pt', 'label' => 'Português'];
+    }
+
+    // Inglês
+    if (strpos($haystack, 'british') !== false || strpos($haystack, 'en-gb') !== false || strpos($haystack, 'uk') !== false) {
+        return ['key' => 'en-gb', 'label' => 'Inglês (Reino Unido)'];
+    }
+    if (strpos($haystack, 'american') !== false || strpos($haystack, 'en-us') !== false) {
+        return ['key' => 'en-us', 'label' => 'Inglês (EUA)'];
+    }
+    if (strpos($haystack, 'english') !== false) {
+        return ['key' => 'en', 'label' => 'Inglês'];
+    }
+
+    // Espanhol
+    if (strpos($haystack, 'spanish') !== false || strpos($haystack, 'espa') !== false || strpos($haystack, 'es-') !== false) {
+        if (strpos($haystack, 'latin') !== false || strpos($haystack, 'mex') !== false) {
+            return ['key' => 'es-419', 'label' => 'Espanhol (América Latina)'];
+        }
+        return ['key' => 'es-es', 'label' => 'Espanhol (Espanha)'];
+    }
+
+    // Francês
+    if (strpos($haystack, 'french') !== false || strpos($haystack, 'fran') !== false || strpos($haystack, 'fr-') !== false) {
+        return ['key' => 'fr-fr', 'label' => 'Francês'];
+    }
+
+    return ['key' => 'other', 'label' => 'Outro / Multilingue'];
+}
+
+// Anota cada voz com o sotaque classificado
+foreach ($ttsVoices as &$_v) {
+    $_v['_accent'] = classifyVoiceAccent($_v);
+}
+unset($_v);
+
+// Ordena: primeiro PT-PT, depois PT (genérico), depois PT-BR, depois outros
+$accentOrder = ['pt-pt' => 0, 'pt' => 1, 'pt-br' => 2, 'es-es' => 3, 'es-419' => 4, 'en-gb' => 5, 'en-us' => 6, 'en' => 7, 'fr-fr' => 8, 'other' => 9];
+usort($ttsVoices, function ($a, $b) use ($accentOrder) {
+    $oa = $accentOrder[$a['_accent']['key']] ?? 99;
+    $ob = $accentOrder[$b['_accent']['key']] ?? 99;
+    if ($oa !== $ob) return $oa <=> $ob;
+    return strcasecmp($a['name'], $b['name']);
+});
+
+// Agrupa por sotaque (em vez de categoria) para o <select>
+$voicesByAccent = [];
 foreach ($ttsVoices as $v) {
-    $cat = $v['category'] !== '' ? $v['category'] : 'outras';
-    $voicesByCategory[$cat][] = $v;
+    $key   = $v['_accent']['key'];
+    $label = $v['_accent']['label'];
+    $voicesByAccent[$key]['label']    = $label;
+    $voicesByAccent[$key]['voices'][] = $v;
+}
+
+// Se o utilizador ainda não escolheu, pré-seleciona a 1ª voz PT-PT (se existir),
+// senão a default configurada, senão a primeira voz da lista.
+if ($selectedVoiceId === '') {
+    if (!empty($voicesByAccent['pt-pt']['voices'])) {
+        $selectedVoiceId = $voicesByAccent['pt-pt']['voices'][0]['voice_id'];
+    } elseif ($defaultVoiceId !== '') {
+        $selectedVoiceId = $defaultVoiceId;
+    } elseif (!empty($ttsVoices)) {
+        $selectedVoiceId = $ttsVoices[0]['voice_id'];
+    }
 }
 ?>
 <h1><i class="fa-solid fa-microphone-lines"></i> Anúncio Dinâmico (Texto para Voz)</h1>
@@ -104,6 +199,22 @@ foreach ($ttsVoices as $v) {
 
         <!-- Seletor de Voz (ElevenLabs) -->
         <label for="voice_id">Voz do Anúncio:</label>
+
+        <?php if (!empty($voicesByAccent)): ?>
+            <div class="voice-filter">
+                <label for="voice_accent_filter" class="voice-filter-label">Filtrar por sotaque:</label>
+                <select id="voice_accent_filter" class="voice-filter-select">
+                    <option value="all">Todos os sotaques</option>
+                    <?php foreach ($voicesByAccent as $key => $group): ?>
+                        <option value="<?= htmlspecialchars($key) ?>"
+                            <?= $key === 'pt-pt' ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($group['label']) ?> (<?= count($group['voices']) ?>)
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        <?php endif; ?>
+
         <div class="voice-row">
             <select id="voice_id" name="voice_id" class="voice-select">
                 <?php if (empty($ttsVoices)): ?>
@@ -111,20 +222,21 @@ foreach ($ttsVoices as $v) {
                         Voz predefinida (<?= htmlspecialchars($defaultVoiceId ?: 'sem voz configurada') ?>)
                     </option>
                 <?php else: ?>
-                    <?php foreach ($voicesByCategory as $cat => $list): ?>
-                        <optgroup label="<?= htmlspecialchars(ucfirst($cat)) ?>">
-                            <?php foreach ($list as $v):
+                    <?php foreach ($voicesByAccent as $accentKey => $group): ?>
+                        <optgroup label="<?= htmlspecialchars($group['label']) ?>" data-accent="<?= htmlspecialchars($accentKey) ?>">
+                            <?php foreach ($group['voices'] as $v):
                                 $labelBits = [];
                                 if (!empty($v['labels']['gender']))      $labelBits[] = $v['labels']['gender'];
-                                if (!empty($v['labels']['accent']))      $labelBits[] = $v['labels']['accent'];
                                 if (!empty($v['labels']['description'])) $labelBits[] = $v['labels']['description'];
+                                if (!empty($v['labels']['accent']))      $labelBits[] = $v['labels']['accent'];
                                 $extra = $labelBits ? ' — ' . implode(', ', $labelBits) : '';
                                 $isDefault = ($v['voice_id'] === $defaultVoiceId);
                             ?>
                                 <option value="<?= htmlspecialchars($v['voice_id']) ?>"
-                                    <?= ($v['voice_id'] === $selectedVoiceId) ? 'selected' : '' ?>
-                                    data-preview="<?= htmlspecialchars($v['preview_url']) ?>">
-                                    <?= htmlspecialchars($v['name'] . $extra) ?><?= $isDefault ? ' (predefinida)' : '' ?>
+                                    data-accent="<?= htmlspecialchars($accentKey) ?>"
+                                    data-preview="<?= htmlspecialchars($v['preview_url']) ?>"
+                                    <?= ($v['voice_id'] === $selectedVoiceId) ? 'selected' : '' ?>>
+                                    [<?= htmlspecialchars(strtoupper($accentKey)) ?>] <?= htmlspecialchars($v['name'] . $extra) ?><?= $isDefault ? ' (predefinida)' : '' ?>
                                 </option>
                             <?php endforeach; ?>
                         </optgroup>
@@ -140,7 +252,11 @@ foreach ($ttsVoices as $v) {
                 Não foi possível obter a lista de vozes da ElevenLabs: <?= htmlspecialchars($voicesError) ?>
             </p>
         <?php else: ?>
-            <p class="gong-hint">A mesma voz é usada em todos os idiomas selecionados.</p>
+            <p class="gong-hint">
+                <strong>Importante:</strong> para PT-PT (Portugal), escolha uma voz marcada como
+                <em>Português (Portugal)</em>. Vozes em inglês a falar PT tendem a soar com sotaque brasileiro/neutro.
+                A mesma voz é usada em todos os idiomas selecionados — para anúncios multilingues, prefira uma voz multilingue (premade).
+            </p>
         <?php endif; ?>
 
         <audio id="voice-preview-player" preload="none" style="display:none;"></audio>
@@ -215,6 +331,26 @@ foreach ($ttsVoices as $v) {
     gap: 10px;
     align-items: stretch;
     margin-bottom: 6px;
+  }
+  .voice-filter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .voice-filter-label {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #374151;
+    white-space: nowrap;
+  }
+  .voice-filter-select {
+    flex: 1;
+    padding: 8px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f9fafb;
+    font-size: 0.9rem;
   }
   .voice-select {
     flex: 1;

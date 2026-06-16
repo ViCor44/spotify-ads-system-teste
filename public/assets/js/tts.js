@@ -58,6 +58,40 @@ document.addEventListener('DOMContentLoaded', function() {
     const voiceSelect    = document.getElementById('voice_id');
     const previewBtn     = document.getElementById('preview-voice-btn');
     const previewPlayer  = document.getElementById('voice-preview-player');
+    const accentFilter   = document.getElementById('voice_accent_filter');
+
+    // --- Filtro por sotaque ---
+    function applyAccentFilter() {
+        if (!voiceSelect || !accentFilter) return;
+        const wanted = accentFilter.value;
+
+        let firstVisible = null;
+        Array.from(voiceSelect.options).forEach(opt => {
+            const accent = opt.getAttribute('data-accent') || '';
+            const show   = (wanted === 'all') || (accent === wanted);
+            opt.hidden   = !show;
+            opt.disabled = !show;
+            if (show && !firstVisible) firstVisible = opt;
+        });
+
+        // Esconde/mostra optgroups vazios
+        Array.from(voiceSelect.querySelectorAll('optgroup')).forEach(g => {
+            const accent = g.getAttribute('data-accent') || '';
+            g.hidden = (wanted !== 'all' && accent !== wanted);
+        });
+
+        // Se a voz atualmente selecionada deixou de estar visível, escolhe a 1ª visível
+        const cur = voiceSelect.options[voiceSelect.selectedIndex];
+        if ((!cur || cur.hidden) && firstVisible) {
+            voiceSelect.value = firstVisible.value;
+            voiceSelect.dispatchEvent(new Event('change'));
+        }
+    }
+
+    if (accentFilter) {
+        accentFilter.addEventListener('change', applyAccentFilter);
+        applyAccentFilter(); // estado inicial
+    }
 
     function setPreviewPlaying(isPlaying) {
         if (!previewBtn) return;
