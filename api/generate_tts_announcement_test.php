@@ -81,17 +81,51 @@ function gtranslate_text(string $text, string $target, ?string $source = null): 
     }
 }
 
+/** Silêncio PCM 16-bit mono (segundos). */
+function pcmSilence(float $seconds, int $sampleRate = 22050, int $channels = 1, int $bits = 16): string {
+    $bytesPerSample = (int) ($bits / 8);
+    $numFrames = (int) round($seconds * $sampleRate);
+    return str_repeat("\x00", $numFrames * $channels * $bytesPerSample);
+}
+
+/** Constrói um WAV (RIFF/PCM) a partir de PCM bruto + parâmetros. */
+function wavBuildFromPcm(string $pcm, int $channels, int $sampleRate, int $bits): string {
+    $byteRate   = (int)($sampleRate * $channels * ($bits / 8));
+    $blockAlign = (int)($channels * ($bits / 8));
+    $dataSize   = strlen($pcm);
+    $riffSize   = 36 + $dataSize;
+
+    $header  = 'RIFF' . pack('V', $riffSize) . 'WAVE';
+    $header .= 'fmt ' . pack('V', 16);
+    $header .= pack('v', 1);           // PCM
+    $header .= pack('v', $channels);
+    $header .= pack('V', $sampleRate);
+    $header .= pack('V', $byteRate);
+    $header .= pack('v', $blockAlign);
+    $header .= pack('v', $bits);
+    $header .= 'data' . pack('V', $dataSize);
+
+    return $header . $pcm;
+}
+
 /**
- * Sintetiza voz via ElevenLabs (formato MP3).
- * Devolve o conteúdo binário do MP3.
+ * Sintetiza voz via ElevenLabs em PCM bruto (16-bit signed little-endian, mono).
+ * Devolve apenas os bytes PCM (sem cabeçalho WAV) para serem concatenados.
  */
-function elevenlabs_synthesize(string $text, ?string $voiceId = null, ?string $modelId = null): string {
+function elevenlabs_synthesize_pcm(string $text, int $sampleRate, ?string $voiceId = null, ?string $modelId = null): string {
     if (!defined('ELEVENLABS_API_KEY') || ELEVENLABS_API_KEY === '' || ELEVENLABS_API_KEY === 'SUBSTITUIR_PELA_API_KEY_DA_ELEVENLABS') {
         throw new Exception("ELEVENLABS_API_KEY não configurada em config/database.php.");
     }
 
     $voiceId = $voiceId ?: (defined('ELEVENLABS_VOICE_ID') ? ELEVENLABS_VOICE_ID : '21m00Tcm4TlvDq8ikWAM');
     $modelId = $modelId ?: (defined('ELEVENLABS_MODEL_ID') ? ELEVENLABS_MODEL_ID : 'eleven_multilingual_v2');
+
+    // ElevenLabs aceita pcm_16000, pcm_22050, pcm_24000, pcm_44100.
+    $allowed = [16000, 22050, 24000, 44100];
+    if (!in_array($sampleRate, $allowed, true)) {
+        $sampleRate = 22050;
+    }
+    $outputFormat = 'pcm_' . $sampleRate;
 
     static $http = null;
     if ($http === null) {
@@ -102,35 +136,30 @@ function elevenlabs_synthesize(string $text, ?string $voiceId = null, ?string $m
         ]);
     }
 
-    $payload = [
-        'text'           => $text,
-        'model_id'       => $modelId,
-        'voice_settings' => [
-            'stability'        => 0.45,
-            'similarity_boost' => 0.85,
-            'style'            => 0.20,
-            'use_speaker_boost'=> true,
-        ],
-    ];
-
     $resp = $http->post('v1/text-to-speech/' . rawurlencode($voiceId), [
         'headers' => [
             'xi-api-key'   => ELEVENLABS_API_KEY,
-            'Accept'       => 'audio/mpeg',
+            'Accept'       => 'audio/basic',
             'Content-Type' => 'application/json',
         ],
-        'query' => [
-            'output_format' => 'mp3_44100_128',
+        'query' => [ 'output_format' => $outputFormat ],
+        'json' => [
+            'text'           => $text,
+            'model_id'       => $modelId,
+            'voice_settings' => [
+                'stability'         => 0.45,
+                'similarity_boost'  => 0.85,
+                'style'             => 0.20,
+                'use_speaker_boost' => true,
+            ],
         ],
-        'json' => $payload,
     ]);
 
     $status = $resp->getStatusCode();
     $body   = (string) $resp->getBody();
 
     if ($status !== 200) {
-        // Tenta extrair mensagem de erro JSON
-        $errMsg = $body;
+        $errMsg  = $body;
         $decoded = json_decode($body, true);
         if (is_array($decoded)) {
             if (isset($decoded['detail']['message'])) $errMsg = $decoded['detail']['message'];
@@ -140,8 +169,16 @@ function elevenlabs_synthesize(string $text, ?string $voiceId = null, ?string $m
         throw new Exception("ElevenLabs falhou (HTTP $status): " . substr($errMsg, 0, 500));
     }
 
-    if ($body === '' || strpos($resp->getHeaderLine('Content-Type'), 'audio') === false) {
-        throw new Exception("ElevenLabs devolveu resposta inválida (Content-Type: " . $resp->getHeaderLine('Content-Type') . ").");
+    if ($body === '') {
+        throw new Exception("ElevenLabs devolveu áudio vazio.");
+    }
+
+    // Algumas respostas de erro vêm com Content-Type application/json mesmo com HTTP 200.
+    $ct = strtolower($resp->getHeaderLine('Content-Type'));
+    if (strpos($ct, 'json') !== false) {
+        $decoded = json_decode($body, true);
+        $msg = is_array($decoded) ? json_encode($decoded) : $body;
+        throw new Exception("ElevenLabs devolveu JSON em vez de áudio: " . substr($msg, 0, 500));
     }
 
     return $body;
@@ -259,14 +296,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
         $voiceId = defined('ELEVENLABS_VOICE_ID') ? ELEVENLABS_VOICE_ID : '';
         $modelId = defined('ELEVENLABS_MODEL_ID') ? ELEVENLABS_MODEL_ID : '';
 
+        // Parâmetros de áudio uniformes (para concatenar PCM sem clicks)
+        $SAMPLE_RATE = 22050;
+        $CHANNELS    = 1;
+        $BITS        = 16;
+        $SILENCE_SEC = 0.40; // pausa entre idiomas
+
         $cacheKeyBase = [
             'provider'         => 'elevenlabs',
+            'format'           => 'pcm_wav',
             'voice'            => $voiceId,
             'model'            => $modelId,
             'announcementType' => $announcementType,
             'segments'         => array_map(function($s){
                 return ['lang' => $s['lang'], 'text' => $s['text']];
             }, $segments),
+            'audio' => [
+                'sr'      => $SAMPLE_RATE,
+                'ch'      => $CHANNELS,
+                'bits'    => $BITS,
+                'silence' => $SILENCE_SEC,
+            ],
         ];
         $cacheKey = hash('sha256', json_encode($cacheKeyBase, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
 
@@ -276,22 +326,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
                 die("Ocorreu um erro ao gerar o anúncio: não foi possível criar a pasta de saída.");
             }
         }
-        $fileName = "tts_multilang_{$cacheKey}.mp3";
+        $fileName = "tts_multilang_{$cacheKey}.wav";
         $filePath = $ttsDir . $fileName;
 
         // =================== Geração ===================
         $allLangsUsed = array_map(fn($s) => $s['lang'], $segments);
 
         if (!file_exists($filePath)) {
-            $mp3Parts = [];
+            $pcmParts = [];
+            $lastIdx  = count($segments) - 1;
 
-            foreach ($segments as $s) {
-                $mp3Parts[] = elevenlabs_synthesize($s['text'], $voiceId, $modelId);
+            foreach ($segments as $i => $s) {
+                $pcmParts[] = elevenlabs_synthesize_pcm($s['text'], $SAMPLE_RATE, $voiceId, $modelId);
+                if ($i !== $lastIdx && $SILENCE_SEC > 0) {
+                    $pcmParts[] = pcmSilence($SILENCE_SEC, $SAMPLE_RATE, $CHANNELS, $BITS);
+                }
             }
 
-            $mp3Final = implode('', $mp3Parts);
+            $pcmAll   = implode('', $pcmParts);
+            $wavFinal = wavBuildFromPcm($pcmAll, $CHANNELS, $SAMPLE_RATE, $BITS);
 
-            if (file_put_contents($filePath, $mp3Final) === false) {
+            if (file_put_contents($filePath, $wavFinal) === false) {
                 throw new Exception("Falha a escrever o ficheiro de áudio.");
             }
         }

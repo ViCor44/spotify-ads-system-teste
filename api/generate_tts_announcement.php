@@ -23,13 +23,36 @@ function numeroParaExtensoPT($n) {
     return $dezenas[$dezena] . ($unidade > 0 ? " e " . $unidades[$unidade] : "");
 }
 
-/** Sintetiza voz via ElevenLabs (MP3). */
-function elevenlabs_synthesize_basic(string $text): string {
+/** Constrói um WAV (RIFF/PCM) a partir de PCM bruto. */
+function wavBuildFromPcm(string $pcm, int $channels, int $sampleRate, int $bits): string {
+    $byteRate   = (int)($sampleRate * $channels * ($bits / 8));
+    $blockAlign = (int)($channels * ($bits / 8));
+    $dataSize   = strlen($pcm);
+    $riffSize   = 36 + $dataSize;
+
+    $header  = 'RIFF' . pack('V', $riffSize) . 'WAVE';
+    $header .= 'fmt ' . pack('V', 16);
+    $header .= pack('v', 1);
+    $header .= pack('v', $channels);
+    $header .= pack('V', $sampleRate);
+    $header .= pack('V', $byteRate);
+    $header .= pack('v', $blockAlign);
+    $header .= pack('v', $bits);
+    $header .= 'data' . pack('V', $dataSize);
+
+    return $header . $pcm;
+}
+
+/** Sintetiza voz via ElevenLabs em PCM bruto (16-bit signed LE, mono). */
+function elevenlabs_synthesize_basic(string $text, int $sampleRate = 22050): string {
     if (!defined('ELEVENLABS_API_KEY') || ELEVENLABS_API_KEY === '' || ELEVENLABS_API_KEY === 'SUBSTITUIR_PELA_API_KEY_DA_ELEVENLABS') {
         throw new Exception("ELEVENLABS_API_KEY não configurada em config/database.php.");
     }
     $voiceId = defined('ELEVENLABS_VOICE_ID') ? ELEVENLABS_VOICE_ID : '21m00Tcm4TlvDq8ikWAM';
     $modelId = defined('ELEVENLABS_MODEL_ID') ? ELEVENLABS_MODEL_ID : 'eleven_multilingual_v2';
+
+    $allowed = [16000, 22050, 24000, 44100];
+    if (!in_array($sampleRate, $allowed, true)) $sampleRate = 22050;
 
     static $http = null;
     if ($http === null) {
@@ -43,10 +66,10 @@ function elevenlabs_synthesize_basic(string $text): string {
     $resp = $http->post('v1/text-to-speech/' . rawurlencode($voiceId), [
         'headers' => [
             'xi-api-key'   => ELEVENLABS_API_KEY,
-            'Accept'       => 'audio/mpeg',
+            'Accept'       => 'audio/basic',
             'Content-Type' => 'application/json',
         ],
-        'query' => [ 'output_format' => 'mp3_44100_128' ],
+        'query' => [ 'output_format' => 'pcm_' . $sampleRate ],
         'json' => [
             'text'           => $text,
             'model_id'       => $modelId,
@@ -72,9 +95,12 @@ function elevenlabs_synthesize_basic(string $text): string {
         }
         throw new Exception("ElevenLabs falhou (HTTP $status): " . substr($errMsg, 0, 500));
     }
-
-    if ($body === '' || strpos($resp->getHeaderLine('Content-Type'), 'audio') === false) {
-        throw new Exception("ElevenLabs devolveu resposta inválida (Content-Type: " . $resp->getHeaderLine('Content-Type') . ").");
+    if ($body === '') {
+        throw new Exception("ElevenLabs devolveu áudio vazio.");
+    }
+    $ct = strtolower($resp->getHeaderLine('Content-Type'));
+    if (strpos($ct, 'json') !== false) {
+        throw new Exception("ElevenLabs devolveu JSON em vez de áudio: " . substr($body, 0, 500));
     }
     return $body;
 }
@@ -115,7 +141,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
         ]
     ];
 
-    $ttsAudioContent = '';
+    $SAMPLE_RATE = 22050;
+    $CHANNELS    = 1;
+    $BITS        = 16;
+    $pcmAll = '';
 
     try {
         foreach ($selectedLanguages as $lang) {
@@ -156,15 +185,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
             }
 
             if (!empty($textToSpeech)) {
-                $ttsAudioContent .= elevenlabs_synthesize_basic($textToSpeech);
+                if ($pcmAll !== '') {
+                    // 0.4s de silêncio entre idiomas
+                    $pcmAll .= str_repeat("\x00", (int) round(0.4 * $SAMPLE_RATE) * $CHANNELS * ($BITS / 8));
+                }
+                $pcmAll .= elevenlabs_synthesize_basic($textToSpeech, $SAMPLE_RATE);
             }
         }
 
-        if (empty($ttsAudioContent)) { throw new Exception("Não foi possível gerar o áudio. Verifique se preencheu os campos."); }
+        if ($pcmAll === '') { throw new Exception("Não foi possível gerar o áudio. Verifique se preencheu os campos."); }
+
+        $ttsAudioContent = wavBuildFromPcm($pcmAll, $CHANNELS, $SAMPLE_RATE, $BITS);
 
         $ttsDir = __DIR__ . '/../public/uploads/tts/';
         if (!is_dir($ttsDir)) { mkdir($ttsDir, 0775, true); }
-        $fileName = 'tts_multilang_' . uniqid() . '.mp3';
+        $fileName = 'tts_multilang_' . uniqid() . '.wav';
         $filePath = $ttsDir . $fileName;
         file_put_contents($filePath, $ttsAudioContent);
 

@@ -1,13 +1,13 @@
 {
     "request": {
-        "text": "Atenção pede-se a comparência",
-        "target": "pt",
+        "text": "Hello",
+        "target": "en",
         "source": null
     },
     "response": {
-        "source": "pt",
-        "input": "Atenção pede-se a comparência",
-        "text": "Atenção pede-se a comparência",
+        "source": "en",
+        "input": "Hello",
+        "text": "Hello",
         "model": null
     }
 }
