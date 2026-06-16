@@ -202,7 +202,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
     $playGong   = !empty($_POST['custom_gong']);
 
     // Voz escolhida pelo utilizador (valida contra a lista da ElevenLabs)
-    $defaultVoiceId = defined('ELEVENLABS_VOICE_ID') ? ELEVENLABS_VOICE_ID : '';
+    require_once __DIR__ . '/tts_settings.php';
+    $defaultVoiceId  = tts_get_default_voice_id();
     $selectedVoiceId = trim((string) ($_POST['voice_id'] ?? ''));
     if ($selectedVoiceId !== '') {
         require_once __DIR__ . '/list_elevenlabs_voices.php';

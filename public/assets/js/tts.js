@@ -90,7 +90,79 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (accentFilter) {
         accentFilter.addEventListener('change', applyAccentFilter);
-        applyAccentFilter(); // estado inicial
+        applyAccentFilter(); // estado inicial (default: "all" -> mostra tudo)
+    }
+
+    // --- Definir voz como predefinida ---
+    const setDefaultBtn  = document.getElementById('set-default-voice-btn');
+    const defaultStatus  = document.getElementById('default-voice-status');
+    const defaultNameEl  = document.getElementById('default-voice-name');
+
+    function currentDefaultVoiceId() {
+        return defaultStatus ? (defaultStatus.getAttribute('data-current') || '') : '';
+    }
+
+    function refreshDefaultButtonState() {
+        if (!setDefaultBtn || !voiceSelect) return;
+        const sel = voiceSelect.value;
+        const isCurrent = sel && sel === currentDefaultVoiceId();
+        setDefaultBtn.classList.toggle('is-current', !!isCurrent);
+        setDefaultBtn.disabled = !!isCurrent;
+        setDefaultBtn.innerHTML = isCurrent
+            ? '<i class="fa-solid fa-check"></i> Já é predefinida'
+            : '<i class="fa-solid fa-star"></i> Predefinir';
+    }
+
+    function updateStatusLabel(voiceId) {
+        if (!defaultStatus) return;
+        defaultStatus.setAttribute('data-current', voiceId);
+
+        // Procura o nome da voz na <option> correspondente
+        let name = voiceId;
+        if (voiceSelect) {
+            const opt = Array.from(voiceSelect.options).find(o => o.value === voiceId);
+            if (opt) {
+                // Remove prefixos "★ [PT-PT] " e sufixo " (predefinida)"
+                name = opt.textContent.replace(/^\s*★\s*/, '').replace(/^\[[A-Z\-]+\]\s*/, '').replace(/\s*\(predefinida\)\s*$/, '').trim();
+            }
+        }
+        if (defaultNameEl) {
+            defaultNameEl.textContent = name;
+            defaultStatus.innerHTML = '<i class="fa-solid fa-star"></i> Voz predefinida atual: <strong id="default-voice-name">' + name + '</strong>';
+            defaultStatus.setAttribute('data-current', voiceId);
+        }
+    }
+
+    if (setDefaultBtn && voiceSelect) {
+        setDefaultBtn.addEventListener('click', async function () {
+            const voiceId = voiceSelect.value;
+            if (!voiceId) return;
+
+            const originalHtml = setDefaultBtn.innerHTML;
+            setDefaultBtn.disabled = true;
+            setDefaultBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> A guardar...';
+
+            try {
+                const fd = new FormData();
+                fd.append('voice_id', voiceId);
+                const resp = await fetch('../api/tts_settings.php', { method: 'POST', body: fd });
+                const data = await resp.json().catch(() => ({}));
+
+                if (!resp.ok || !data.ok) {
+                    throw new Error(data.error || ('HTTP ' + resp.status));
+                }
+                updateStatusLabel(voiceId);
+                refreshDefaultButtonState();
+            } catch (err) {
+                console.error('Falha a guardar voz predefinida:', err);
+                alert('Não foi possível guardar a voz predefinida: ' + err.message);
+                setDefaultBtn.disabled = false;
+                setDefaultBtn.innerHTML = originalHtml;
+            }
+        });
+
+        voiceSelect.addEventListener('change', refreshDefaultButtonState);
+        refreshDefaultButtonState();
     }
 
     function setPreviewPlaying(isPlaying) {

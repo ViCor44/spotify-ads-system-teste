@@ -2,6 +2,7 @@
 // public/pages/tts_announcement.php
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../api/list_elevenlabs_voices.php';
+require_once __DIR__ . '/../../api/tts_settings.php';
 
 $lastData = $_SESSION['last_tts_data'] ?? [];
 $defaultGong = array_key_exists('custom_gong', $lastData)
@@ -16,7 +17,8 @@ try {
 } catch (Throwable $e) {
     $voicesError = $e->getMessage();
 }
-$defaultVoiceId  = defined('ELEVENLABS_VOICE_ID') ? ELEVENLABS_VOICE_ID : '';
+// Voz predefinida: preferência do utilizador (storage/tts_settings.json) > constante em config/database.php
+$defaultVoiceId  = tts_get_default_voice_id();
 $selectedVoiceId = $lastData['voice_id'] ?? '';
 
 /**
@@ -109,12 +111,10 @@ foreach ($ttsVoices as $v) {
     $voicesByAccent[$key]['voices'][] = $v;
 }
 
-// Se o utilizador ainda não escolheu, pré-seleciona a 1ª voz PT-PT (se existir),
-// senão a default configurada, senão a primeira voz da lista.
+// Se o utilizador ainda não escolheu, usa a voz predefinida (preferência guardada
+// ou, em último caso, a primeira voz da lista).
 if ($selectedVoiceId === '') {
-    if (!empty($voicesByAccent['pt-pt']['voices'])) {
-        $selectedVoiceId = $voicesByAccent['pt-pt']['voices'][0]['voice_id'];
-    } elseif ($defaultVoiceId !== '') {
+    if ($defaultVoiceId !== '') {
         $selectedVoiceId = $defaultVoiceId;
     } elseif (!empty($ttsVoices)) {
         $selectedVoiceId = $ttsVoices[0]['voice_id'];
@@ -204,10 +204,9 @@ if ($selectedVoiceId === '') {
             <div class="voice-filter">
                 <label for="voice_accent_filter" class="voice-filter-label">Filtrar por sotaque:</label>
                 <select id="voice_accent_filter" class="voice-filter-select">
-                    <option value="all">Todos os sotaques</option>
+                    <option value="all" selected>Todos os sotaques</option>
                     <?php foreach ($voicesByAccent as $key => $group): ?>
-                        <option value="<?= htmlspecialchars($key) ?>"
-                            <?= $key === 'pt-pt' ? 'selected' : '' ?>>
+                        <option value="<?= htmlspecialchars($key) ?>">
                             <?= htmlspecialchars($group['label']) ?> (<?= count($group['voices']) ?>)
                         </option>
                     <?php endforeach; ?>
@@ -236,7 +235,7 @@ if ($selectedVoiceId === '') {
                                     data-accent="<?= htmlspecialchars($accentKey) ?>"
                                     data-preview="<?= htmlspecialchars($v['preview_url']) ?>"
                                     <?= ($v['voice_id'] === $selectedVoiceId) ? 'selected' : '' ?>>
-                                    [<?= htmlspecialchars(strtoupper($accentKey)) ?>] <?= htmlspecialchars($v['name'] . $extra) ?><?= $isDefault ? ' (predefinida)' : '' ?>
+                                    <?= $isDefault ? '★ ' : '' ?>[<?= htmlspecialchars(strtoupper($accentKey)) ?>] <?= htmlspecialchars($v['name'] . $extra) ?><?= $isDefault ? ' (predefinida)' : '' ?>
                                 </option>
                             <?php endforeach; ?>
                         </optgroup>
@@ -246,7 +245,23 @@ if ($selectedVoiceId === '') {
             <button type="button" id="preview-voice-btn" class="preview-btn" title="Ouvir amostra da voz">
                 <i class="fa-solid fa-play"></i> Pré-visualizar
             </button>
+            <button type="button" id="set-default-voice-btn" class="default-btn" title="Definir a voz selecionada como predefinida">
+                <i class="fa-solid fa-star"></i> Predefinir
+            </button>
         </div>
+        <p id="default-voice-status" class="default-voice-status" data-current="<?= htmlspecialchars($defaultVoiceId) ?>">
+            <?php if ($defaultVoiceId): ?>
+                <i class="fa-solid fa-star"></i> Voz predefinida atual: <strong id="default-voice-name"><?php
+                    $name = $defaultVoiceId;
+                    foreach ($ttsVoices as $v) {
+                        if ($v['voice_id'] === $defaultVoiceId) { $name = $v['name']; break; }
+                    }
+                    echo htmlspecialchars($name);
+                ?></strong>
+            <?php else: ?>
+                <em>Sem voz predefinida.</em>
+            <?php endif; ?>
+        </p>
         <?php if ($voicesError): ?>
             <p class="gong-hint" style="color:#b91c1c;">
                 Não foi possível obter a lista de vozes da ElevenLabs: <?= htmlspecialchars($voicesError) ?>
@@ -382,6 +397,32 @@ if ($selectedVoiceId === '') {
   .preview-btn:hover    { background: #f3f4f6; border-color: #9ca3af; }
   .preview-btn:disabled { opacity: .6; cursor: not-allowed; }
   .preview-btn.playing  { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
+
+  /* Botão "Definir como predefinida" */
+  .default-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 14px;
+    border: 1px solid #fbbf24;
+    border-radius: 10px;
+    background: #fffbeb;
+    color: #92400e;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color .15s ease, border-color .15s ease;
+  }
+  .default-btn:hover            { background: #fef3c7; border-color: #f59e0b; }
+  .default-btn:disabled         { opacity: .6; cursor: not-allowed; }
+  .default-btn.is-current       { background: #ecfdf5; border-color: #34d399; color: #065f46; }
+  .default-btn.is-current i     { color: #059669; }
+
+  .default-voice-status {
+    font-size: 0.85rem;
+    color: #4b5563;
+    margin: 4px 0 12px;
+  }
+  .default-voice-status i { color: #f59e0b; }
 </style>
 
 
