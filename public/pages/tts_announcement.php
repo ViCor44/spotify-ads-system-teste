@@ -319,15 +319,19 @@ foreach ($languageDefs as $lang => $def) {
                                     id="voice-select-<?= htmlspecialchars($lang) ?>">
                                 <?php foreach ($st['voices_by_accent'] as $accentKey => $group): ?>
                                     <?php foreach ($group['voices'] as $v):
+                                        $accentLabel = $v['_accent']['label'] ?? '';
                                         $bits = [];
+                                        if ($accentLabel !== '')                  $bits[] = $accentLabel;
                                         if (!empty($v['labels']['gender']))      $bits[] = $v['labels']['gender'];
                                         if (!empty($v['labels']['description'])) $bits[] = $v['labels']['description'];
-                                        $extra = $bits ? ' — ' . implode(', ', $bits) : '';
+                                        $extra = $bits ? ' — ' . implode(' · ', $bits) : '';
                                         $isDefault = ($v['voice_id'] === $st['default_voice']);
                                     ?>
                                         <option value="<?= htmlspecialchars($v['voice_id']) ?>"
                                             data-preview="<?= htmlspecialchars($v['preview_url']) ?>"
                                             data-name="<?= htmlspecialchars($v['name']) ?>"
+                                            data-extra="<?= htmlspecialchars($extra) ?>"
+                                            data-accent="<?= htmlspecialchars($accentLabel) ?>"
                                             <?= ($v['voice_id'] === $st['selected']) ? 'selected' : '' ?>>
                                             <?= $isDefault ? '★ ' : '' ?><?= htmlspecialchars($v['name'] . $extra) ?><?= $isDefault ? ' (predefinida)' : '' ?>
                                         </option>
@@ -675,6 +679,22 @@ foreach ($languageDefs as $lang => $def) {
     font-weight: 600;
     color: #111827;
   }
+  .add-voice-card .naturalidade {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    align-self: flex-start;
+    padding: 2px 8px;
+    border: 1px solid #bfdbfe;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1e3a8a;
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+  .add-voice-card .naturalidade i { color: #2563eb; }
+  .add-voice-card .naturalidade-label { color: #1e40af; font-weight: 600; }
+  .add-voice-card .naturalidade-value { color: #1e3a8a; }
   .add-voice-card .meta {
     color: #6b7280;
     font-size: 0.8rem;

@@ -83,9 +83,13 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!select) return;
         Array.from(select.options).forEach(opt => {
             const name = opt.getAttribute('data-name') || '';
-            // Tenta preservar os extras "— gender, description..."
-            const m = opt.textContent.match(/—\s*([^()]+?)(?:\s*\(predefinida\))?\s*$/);
-            const extra = m ? ' — ' + m[1].trim() : '';
+            // Preferir o `data-extra` (contém naturalidade + género + descrição);
+            // como fallback, tenta extrair do texto actual.
+            let extra = opt.getAttribute('data-extra');
+            if (extra === null) {
+                const m = opt.textContent.match(/—\s*([^()]+?)(?:\s*\(predefinida\))?\s*$/);
+                extra = m ? ' — ' + m[1].trim() : '';
+            }
             const star   = (opt.value === newDefaultVoiceId) ? '★ ' : '';
             const suffix = (opt.value === newDefaultVoiceId) ? ' (predefinida)' : '';
             opt.textContent = star + name + extra + suffix;
@@ -149,11 +153,16 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
         container.innerHTML = voices.map(v => {
-            const meta = [v.gender, v.age, v.accent, v.descriptive].filter(Boolean).join(' · ');
+            // Naturalidade = sotaque (ou idioma como fallback) — mostrada como badge
+            const naturalidade = (v.accent || v.language || '').trim();
+            const meta = [v.gender, v.age, v.descriptive].filter(Boolean).join(' · ');
             return (
                 '<div class="add-voice-card" data-voice-id="' + escapeHtml(v.voice_id) + '" data-public-owner-id="' + escapeHtml(v.public_owner_id) + '">' +
                     '<div class="name">' + escapeHtml(v.name || 'Sem nome') + '</div>' +
-                    '<div class="meta">' + escapeHtml(meta) + '</div>' +
+                    (naturalidade
+                        ? '<div class="naturalidade"><i class="fa-solid fa-earth-europe"></i> <span class="naturalidade-label">Naturalidade:</span> <span class="naturalidade-value">' + escapeHtml(naturalidade) + '</span></div>'
+                        : '') +
+                    (meta ? '<div class="meta">' + escapeHtml(meta) + '</div>' : '') +
                     (v.use_case ? '<div class="meta">Uso: ' + escapeHtml(v.use_case) + '</div>' : '') +
                     '<button type="button" class="add-btn" data-add-name="' + escapeHtml(v.name || 'Voz importada') + '">' +
                         '<i class="fa-solid fa-plus"></i> Adicionar à minha conta' +
