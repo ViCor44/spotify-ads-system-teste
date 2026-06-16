@@ -410,7 +410,11 @@ foreach ($languageDefs as $lang => $def) {
     </form>
 </div>
 
-<script src="assets/js/tts.js"></script>
+<?php
+    $ttsJsPath = __DIR__ . '/../assets/js/tts.js';
+    $ttsJsVer  = is_file($ttsJsPath) ? filemtime($ttsJsPath) : time();
+?>
+<script src="assets/js/tts.js?v=<?= $ttsJsVer ?>"></script>
 <style>
   /* Caixa de texto */
   #custom-input-group textarea {
