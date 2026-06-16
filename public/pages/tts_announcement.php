@@ -312,9 +312,6 @@ foreach ($languageDefs as $lang => $def) {
                             <?php endforeach; ?>
                         </select>
 
-                        <button type="button" class="preview-btn preview-voice-btn" data-lang="<?= htmlspecialchars($lang) ?>" title="Ouvir amostra">
-                            <i class="fa-solid fa-play"></i>
-                        </button>
                         <button type="button" class="default-btn set-default-btn"
                                 data-lang="<?= htmlspecialchars($lang) ?>"
                                 data-current="<?= htmlspecialchars($st['default_voice']) ?>"
@@ -331,8 +328,6 @@ foreach ($languageDefs as $lang => $def) {
                 As linhas dos idiomas não selecionados acima ficam desativadas — mas o seu valor é guardado para uso futuro.
             </p>
         <?php endif; ?>
-
-        <audio id="voice-preview-player" preload="none" style="display:none;"></audio>
 
         <button id="generate-btn" type="submit">Gerar e Tocar Anúncio</button>
     </form>
@@ -525,7 +520,7 @@ foreach ($languageDefs as $lang => $def) {
   }
   .voice-lang-controls {
     display: grid;
-    grid-template-columns: minmax(160px, 1fr) minmax(220px, 2fr) auto auto;
+    grid-template-columns: minmax(160px, 1fr) minmax(220px, 2fr) auto;
     gap: 8px;
     flex: 1;
     align-items: stretch;
@@ -540,7 +535,6 @@ foreach ($languageDefs as $lang => $def) {
   .voice-lang-controls .voice-select {
     margin: 0;
   }
-  .voice-lang-controls .preview-btn,
   .voice-lang-controls .default-btn {
     padding: 0 12px;
     font-size: 0.85rem;

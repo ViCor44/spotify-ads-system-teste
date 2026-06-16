@@ -54,67 +54,12 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // =================== Voz por Idioma ===================
-    const previewPlayer = document.getElementById('voice-preview-player');
-    let currentPreviewBtn = null;
 
     function getSelectForLang(lang) {
         return document.getElementById('voice-select-' + lang);
     }
     function getSelectedOption(select) {
         return select ? select.options[select.selectedIndex] || null : null;
-    }
-
-    function setPreviewPlaying(btn, isPlaying) {
-        if (!btn) return;
-        btn.classList.toggle('playing', isPlaying);
-        btn.innerHTML = isPlaying
-            ? '<i class="fa-solid fa-stop"></i>'
-            : '<i class="fa-solid fa-play"></i>';
-    }
-    function stopAllPreviews() {
-        if (previewPlayer && !previewPlayer.paused) {
-            previewPlayer.pause();
-            previewPlayer.currentTime = 0;
-        }
-        if (currentPreviewBtn) {
-            setPreviewPlaying(currentPreviewBtn, false);
-            currentPreviewBtn = null;
-        }
-    }
-
-    // ---- Botões de pré-visualização ----
-    document.querySelectorAll('.preview-voice-btn').forEach(btn => {
-        btn.addEventListener('click', function () {
-            const lang   = btn.getAttribute('data-lang');
-            const select = getSelectForLang(lang);
-            const opt    = getSelectedOption(select);
-            const url    = opt ? (opt.getAttribute('data-preview') || '') : '';
-
-            if (currentPreviewBtn === btn && previewPlayer && !previewPlayer.paused) {
-                stopAllPreviews();
-                return;
-            }
-            stopAllPreviews();
-            if (!url) {
-                alert('Esta voz não tem amostra de pré-visualização disponível.');
-                return;
-            }
-            previewPlayer.src = url;
-            previewPlayer.play().then(() => {
-                currentPreviewBtn = btn;
-                setPreviewPlaying(btn, true);
-            }).catch(err => {
-                console.error('Erro a reproduzir pré-visualização:', err);
-                stopAllPreviews();
-            });
-        });
-    });
-
-    if (previewPlayer) {
-        previewPlayer.addEventListener('ended', stopAllPreviews);
-        previewPlayer.addEventListener('pause', () => {
-            if (previewPlayer.currentTime === 0) stopAllPreviews();
-        });
     }
 
     // ---- Filtro de sotaque (por linha) ----
@@ -232,7 +177,7 @@ document.addEventListener('DOMContentLoaded', function () {
             row.classList.toggle('is-active', active);
             row.classList.toggle('is-disabled', !active);
 
-            row.querySelectorAll('.voice-accent-filter, .preview-voice-btn').forEach(el => {
+            row.querySelectorAll('.voice-accent-filter').forEach(el => {
                 el.disabled = !active;
             });
             // O select de voz fica disponível para o utilizador poder predefinir
