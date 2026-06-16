@@ -134,25 +134,48 @@ document.addEventListener('DOMContentLoaded', function () {
         refreshDefaultBtnState(btn);
     });
 
-    // ---- Adicionar voz à conta ElevenLabs ----
+    // ---- Adicionar voz à conta ElevenLabs (modal global) ----
     function escapeHtml(s) {
         return String(s || '').replace(/[&<>"']/g, c => ({
             '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
         }[c]));
     }
 
-    function getPanel(lang) {
-        return document.getElementById('add-voice-panel-' + lang);
+    const modal          = document.getElementById('add-voice-modal');
+    const modalLangLabel = modal ? modal.querySelector('.add-voice-modal__lang') : null;
+    const modalSearchInp = modal ? modal.querySelector('.add-voice-search')       : null;
+    const modalGenderSel = modal ? modal.querySelector('.add-voice-gender')       : null;
+    const modalSearchBtn = modal ? modal.querySelector('.add-voice-search-btn')   : null;
+    const modalResults   = modal ? modal.querySelector('.add-voice-results')      : null;
+    let modalLang        = '';
+
+    function openModal(lang, label) {
+        if (!modal) return;
+        modalLang = lang || '';
+        if (modalLangLabel) modalLangLabel.textContent = label || (lang ? lang.toUpperCase() : '—');
+        if (modalSearchInp) modalSearchInp.value = '';
+        if (modalGenderSel) modalGenderSel.value = '';
+        modal.hidden = false;
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+        searchSharedVoices();
+        if (modalSearchInp) setTimeout(() => modalSearchInp.focus(), 50);
     }
 
-    function renderResults(lang, voices) {
-        const container = document.querySelector('.add-voice-results[data-lang="' + lang + '"]');
-        if (!container) return;
+    function closeModal() {
+        if (!modal) return;
+        modal.hidden = true;
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+    }
+
+    function renderResults(voices) {
+        if (!modalResults) return;
         if (!voices || voices.length === 0) {
-            container.innerHTML = '<p class="add-voice-hint">Sem resultados. Tente outro termo ou outro género.</p>';
+            modalResults.innerHTML = '<p class="add-voice-hint">Sem resultados. Tente outro termo ou outro género.</p>';
             return;
         }
-        container.innerHTML = voices.map(v => {
+        modalResults.innerHTML = voices.map(v => {
             // Naturalidade = sotaque (ou idioma como fallback) — mostrada como badge
             const naturalidade = (v.accent || v.language || '').trim();
             const meta = [v.gender, v.age, v.descriptive].filter(Boolean).join(' · ');
@@ -164,6 +187,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         : '') +
                     (meta ? '<div class="meta">' + escapeHtml(meta) + '</div>' : '') +
                     (v.use_case ? '<div class="meta">Uso: ' + escapeHtml(v.use_case) + '</div>' : '') +
+                    (v.preview_url
+                        ? '<audio controls preload="none" src="' + escapeHtml(v.preview_url) + '" style="width:100%;margin-top:4px;"></audio>'
+                        : '') +
                     '<button type="button" class="add-btn" data-add-name="' + escapeHtml(v.name || 'Voz importada') + '">' +
                         '<i class="fa-solid fa-plus"></i> Adicionar à minha conta' +
                     '</button>' +
@@ -172,17 +198,14 @@ document.addEventListener('DOMContentLoaded', function () {
         }).join('');
     }
 
-    async function searchSharedVoices(lang) {
-        const container = document.querySelector('.add-voice-results[data-lang="' + lang + '"]');
-        const search    = document.querySelector('.add-voice-search[data-lang="' + lang + '"]');
-        const gender    = document.querySelector('.add-voice-gender[data-lang="' + lang + '"]');
-        if (!container) return;
+    async function searchSharedVoices() {
+        if (!modalResults || !modalLang) return;
 
-        container.innerHTML = '<p class="add-voice-hint"><i class="fa-solid fa-spinner fa-spin"></i> A procurar vozes ' + escapeHtml(lang.toUpperCase()) + '…</p>';
+        modalResults.innerHTML = '<p class="add-voice-hint"><i class="fa-solid fa-spinner fa-spin"></i> A procurar vozes ' + escapeHtml(modalLang.toUpperCase()) + '…</p>';
 
-        const params = new URLSearchParams({ lang });
-        if (search && search.value.trim()) params.set('q', search.value.trim());
-        if (gender && gender.value)         params.set('gender', gender.value);
+        const params = new URLSearchParams({ lang: modalLang });
+        if (modalSearchInp && modalSearchInp.value.trim()) params.set('q', modalSearchInp.value.trim());
+        if (modalGenderSel && modalGenderSel.value)         params.set('gender', modalGenderSel.value);
 
         try {
             const resp = await fetch('../api/elevenlabs_shared_voices.php?' + params.toString());
@@ -190,15 +213,13 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!resp.ok || !data.ok) {
                 throw new Error(data.error || ('HTTP ' + resp.status));
             }
-            renderResults(lang, data.voices);
+            renderResults(data.voices);
         } catch (err) {
-            container.innerHTML = '<p class="add-voice-hint error">Erro: ' + escapeHtml(err.message) + '</p>';
+            modalResults.innerHTML = '<p class="add-voice-hint error">Erro: ' + escapeHtml(err.message) + '</p>';
         }
     }
 
     async function addSharedVoice(card) {
-        const panel       = card.closest('.add-voice-panel');
-        const lang        = panel ? (panel.id || '').replace('add-voice-panel-', '') : '';
         const voiceId     = card.getAttribute('data-voice-id');
         const publicOwner = card.getAttribute('data-public-owner-id');
         const addBtn      = card.querySelector('.add-btn');
@@ -233,44 +254,43 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.querySelectorAll('.add-voice-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            const lang  = btn.getAttribute('data-lang');
-            const panel = getPanel(lang);
-            if (!panel) return;
-            const willOpen = panel.hasAttribute('hidden');
-            panel.toggleAttribute('hidden', !willOpen);
-            if (willOpen) searchSharedVoices(lang); // pesquisa logo ao abrir
+            const lang  = btn.getAttribute('data-lang') || '';
+            const label = btn.getAttribute('data-label') || '';
+            openModal(lang, label);
         });
     });
 
-    document.querySelectorAll('.add-voice-close-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const lang  = btn.getAttribute('data-lang');
-            const panel = getPanel(lang);
-            if (panel) panel.setAttribute('hidden', '');
-        });
-    });
-
-    document.querySelectorAll('.add-voice-search-btn').forEach(btn => {
-        btn.addEventListener('click', () => searchSharedVoices(btn.getAttribute('data-lang')));
-    });
-
-    document.querySelectorAll('.add-voice-search').forEach(inp => {
-        inp.addEventListener('keydown', e => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                searchSharedVoices(inp.getAttribute('data-lang'));
+    if (modal) {
+        // Fechar (backdrop e botão ×)
+        modal.addEventListener('click', e => {
+            if (e.target.closest('[data-close]')) {
+                closeModal();
+                return;
+            }
+            const addBtn = e.target.closest('.add-btn');
+            if (addBtn) {
+                const card = addBtn.closest('.add-voice-card');
+                if (card) addSharedVoice(card);
             }
         });
-    });
-
-    // Delegação para os botões "Adicionar à minha conta" (renderizados dinamicamente)
-    document.querySelectorAll('.add-voice-results').forEach(container => {
-        container.addEventListener('click', e => {
-            const addBtn = e.target.closest('.add-btn');
-            if (!addBtn) return;
-            const card = addBtn.closest('.add-voice-card');
-            if (card) addSharedVoice(card);
+        // ESC
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && !modal.hidden) closeModal();
         });
-    });
+        if (modalSearchBtn) {
+            modalSearchBtn.addEventListener('click', () => searchSharedVoices());
+        }
+        if (modalSearchInp) {
+            modalSearchInp.addEventListener('keydown', e => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    searchSharedVoices();
+                }
+            });
+        }
+        if (modalGenderSel) {
+            modalGenderSel.addEventListener('change', () => searchSharedVoices());
+        }
+    }
 
 });

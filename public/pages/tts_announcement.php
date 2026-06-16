@@ -354,28 +354,6 @@ foreach ($languageDefs as $lang => $def) {
                         </div>
                     <?php endif; ?>
                   </div>
-
-                    <!-- Painel expansível para procurar/adicionar vozes -->
-                    <div class="add-voice-panel" id="add-voice-panel-<?= htmlspecialchars($lang) ?>" hidden>
-                        <div class="add-voice-toolbar">
-                            <input type="text" class="add-voice-search" placeholder="Procurar por nome, sotaque, descrição…"
-                                   data-lang="<?= htmlspecialchars($lang) ?>">
-                            <select class="add-voice-gender" data-lang="<?= htmlspecialchars($lang) ?>">
-                                <option value="">Qualquer género</option>
-                                <option value="female">Feminino</option>
-                                <option value="male">Masculino</option>
-                            </select>
-                            <button type="button" class="add-voice-search-btn" data-lang="<?= htmlspecialchars($lang) ?>">
-                                <i class="fa-solid fa-magnifying-glass"></i> Procurar
-                            </button>
-                            <button type="button" class="add-voice-close-btn" data-lang="<?= htmlspecialchars($lang) ?>" title="Fechar">
-                                <i class="fa-solid fa-xmark"></i>
-                            </button>
-                        </div>
-                        <div class="add-voice-results" data-lang="<?= htmlspecialchars($lang) ?>">
-                            <p class="add-voice-hint"><i class="fa-solid fa-info-circle"></i> Clique em <em>Procurar</em> para pesquisar vozes <?= htmlspecialchars($st['label']) ?> na biblioteca pública da ElevenLabs.</p>
-                        </div>
-                    </div>
                 </div>
             <?php endforeach; ?>
             </div>
@@ -389,6 +367,38 @@ foreach ($languageDefs as $lang => $def) {
 
         <button id="generate-btn" type="submit">Gerar e Tocar Anúncio</button>
     </form>
+</div>
+
+<!-- Modal global de pesquisa/adicionar vozes (Voice Library da ElevenLabs) -->
+<div class="add-voice-modal" id="add-voice-modal" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="add-voice-modal-title">
+    <div class="add-voice-modal__backdrop" data-close="1"></div>
+    <div class="add-voice-modal__dialog" role="document">
+        <div class="add-voice-modal__header">
+            <h3 id="add-voice-modal-title">
+                <i class="fa-solid fa-microphone"></i>
+                Adicionar voz — <span class="add-voice-modal__lang">—</span>
+            </h3>
+            <button type="button" class="add-voice-modal__close" data-close="1" aria-label="Fechar">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="add-voice-modal__body">
+            <div class="add-voice-toolbar">
+                <input type="text" class="add-voice-search" placeholder="Procurar por nome, sotaque, descrição…">
+                <select class="add-voice-gender">
+                    <option value="">Qualquer género</option>
+                    <option value="female">Feminino</option>
+                    <option value="male">Masculino</option>
+                </select>
+                <button type="button" class="add-voice-search-btn">
+                    <i class="fa-solid fa-magnifying-glass"></i> Procurar
+                </button>
+            </div>
+            <div class="add-voice-results">
+                <p class="add-voice-hint"><i class="fa-solid fa-info-circle"></i> A pesquisar vozes na biblioteca pública da ElevenLabs…</p>
+            </div>
+        </div>
+    </div>
 </div>
 
 <?php
@@ -724,6 +734,74 @@ foreach ($languageDefs as $lang => $def) {
     border-radius: 8px;
   }
   .add-voice-hint.error { color: #b91c1c; border-color: #fca5a5; background: #fef2f2; }
+
+  /* ===================== Modal global ===================== */
+  .add-voice-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .add-voice-modal[hidden] { display: none; }
+  .add-voice-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, .55);
+    backdrop-filter: blur(2px);
+  }
+  .add-voice-modal__dialog {
+    position: relative;
+    background: #fff;
+    border-radius: 14px;
+    width: min(880px, 100%);
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    overflow: hidden;
+  }
+  .add-voice-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+  }
+  .add-voice-modal__header h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    color: #111827;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .add-voice-modal__header h3 i { color: #2563eb; }
+  .add-voice-modal__lang { color: #1e3a8a; font-weight: 700; }
+  .add-voice-modal__close {
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+  }
+  .add-voice-modal__close:hover { background: #f3f4f6; color: #111827; }
+  .add-voice-modal__body {
+    padding: 14px 18px 18px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .add-voice-modal .add-voice-results {
+    max-height: none;
+    flex: 1;
+  }
 
   @media (max-width: 720px) {
     .voice-lang-row { flex-direction: column; }
