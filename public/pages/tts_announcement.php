@@ -111,14 +111,71 @@ foreach ($ttsVoices as $v) {
     $voicesByAccent[$key]['voices'][] = $v;
 }
 
-// Se o utilizador ainda não escolheu, usa a voz predefinida (preferência guardada
-// ou, em último caso, a primeira voz da lista).
-if ($selectedVoiceId === '') {
-    if ($defaultVoiceId !== '') {
-        $selectedVoiceId = $defaultVoiceId;
-    } elseif (!empty($ttsVoices)) {
-        $selectedVoiceId = $ttsVoices[0]['voice_id'];
+// =================== Configuração por idioma ===================
+$languageDefs = [
+    'pt' => [
+        'label'           => 'Português',
+        'flag'            => 'PT',
+        'preferred_accents' => ['pt-pt', 'pt', 'pt-br'],
+    ],
+    'en' => [
+        'label'           => 'Inglês',
+        'flag'            => 'EN',
+        'preferred_accents' => ['en-gb', 'en-us', 'en'],
+    ],
+    'es' => [
+        'label'           => 'Espanhol',
+        'flag'            => 'ES',
+        'preferred_accents' => ['es-es', 'es-419'],
+    ],
+    'fr' => [
+        'label'           => 'Francês',
+        'flag'            => 'FR',
+        'preferred_accents' => ['fr-fr'],
+    ],
+];
+
+// Para cada idioma calcula: voz predefinida, voz selecionada e accent a pré-filtrar.
+$defaultVoiceByLang = tts_get_all_default_voices_by_lang();
+$selectedVoiceByLang = $lastData['voice_id_by_lang'] ?? [];
+
+$voiceByLangState = [];
+foreach ($languageDefs as $lang => $def) {
+    $defaultVoice = $defaultVoiceByLang[$lang] ?? $defaultVoiceId;
+    $selected     = !empty($selectedVoiceByLang[$lang]) ? $selectedVoiceByLang[$lang] : $defaultVoice;
+
+    // Se a voz selecionada não existe (na lista atual), cai para a primeira voz
+    // do sotaque preferido, depois para qualquer voz.
+    $validIds = array_column($ttsVoices, 'voice_id');
+    if (!in_array($selected, $validIds, true)) {
+        $selected = '';
+        foreach ($def['preferred_accents'] as $acc) {
+            if (!empty($voicesByAccent[$acc]['voices'])) {
+                $selected = $voicesByAccent[$acc]['voices'][0]['voice_id'];
+                break;
+            }
+        }
+        if ($selected === '' && !empty($ttsVoices)) {
+            $selected = $ttsVoices[0]['voice_id'];
+        }
     }
+
+    // Sotaque a usar para pré-filtrar o select deste idioma.
+    $initialAccent = 'all';
+    foreach ($def['preferred_accents'] as $acc) {
+        if (!empty($voicesByAccent[$acc]['voices'])) {
+            $initialAccent = $acc;
+            break;
+        }
+    }
+
+    $voiceByLangState[$lang] = [
+        'label'          => $def['label'],
+        'flag'           => $def['flag'],
+        'default_voice'  => $defaultVoice,
+        'selected'       => $selected,
+        'initial_accent' => $initialAccent,
+    ];
 }
 ?>
 <h1><i class="fa-solid fa-microphone-lines"></i> Anúncio Dinâmico (Texto para Voz)</h1>
@@ -197,80 +254,81 @@ if ($selectedVoiceId === '') {
         
         <p style="font-size: 0.9em; color: #6c757d; margin-top: -10px; margin-bottom: 20px;">Pelo menos um idioma deve ser selecionado.</p>
 
-        <!-- Seletor de Voz (ElevenLabs) -->
-        <label for="voice_id">Voz do Anúncio:</label>
+        <!-- Seletores de Voz por Idioma (ElevenLabs) -->
+        <label>Voz por Idioma:</label>
 
-        <?php if (!empty($voicesByAccent)): ?>
-            <div class="voice-filter">
-                <label for="voice_accent_filter" class="voice-filter-label">Filtrar por sotaque:</label>
-                <select id="voice_accent_filter" class="voice-filter-select">
-                    <option value="all" selected>Todos os sotaques</option>
-                    <?php foreach ($voicesByAccent as $key => $group): ?>
-                        <option value="<?= htmlspecialchars($key) ?>">
-                            <?= htmlspecialchars($group['label']) ?> (<?= count($group['voices']) ?>)
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-        <?php endif; ?>
-
-        <div class="voice-row">
-            <select id="voice_id" name="voice_id" class="voice-select">
-                <?php if (empty($ttsVoices)): ?>
-                    <option value="<?= htmlspecialchars($defaultVoiceId) ?>" selected>
-                        Voz predefinida (<?= htmlspecialchars($defaultVoiceId ?: 'sem voz configurada') ?>)
-                    </option>
-                <?php else: ?>
-                    <?php foreach ($voicesByAccent as $accentKey => $group): ?>
-                        <optgroup label="<?= htmlspecialchars($group['label']) ?>" data-accent="<?= htmlspecialchars($accentKey) ?>">
-                            <?php foreach ($group['voices'] as $v):
-                                $labelBits = [];
-                                if (!empty($v['labels']['gender']))      $labelBits[] = $v['labels']['gender'];
-                                if (!empty($v['labels']['description'])) $labelBits[] = $v['labels']['description'];
-                                if (!empty($v['labels']['accent']))      $labelBits[] = $v['labels']['accent'];
-                                $extra = $labelBits ? ' — ' . implode(', ', $labelBits) : '';
-                                $isDefault = ($v['voice_id'] === $defaultVoiceId);
-                            ?>
-                                <option value="<?= htmlspecialchars($v['voice_id']) ?>"
-                                    data-accent="<?= htmlspecialchars($accentKey) ?>"
-                                    data-preview="<?= htmlspecialchars($v['preview_url']) ?>"
-                                    <?= ($v['voice_id'] === $selectedVoiceId) ? 'selected' : '' ?>>
-                                    <?= $isDefault ? '★ ' : '' ?>[<?= htmlspecialchars(strtoupper($accentKey)) ?>] <?= htmlspecialchars($v['name'] . $extra) ?><?= $isDefault ? ' (predefinida)' : '' ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </optgroup>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </select>
-            <button type="button" id="preview-voice-btn" class="preview-btn" title="Ouvir amostra da voz">
-                <i class="fa-solid fa-play"></i> Pré-visualizar
-            </button>
-            <button type="button" id="set-default-voice-btn" class="default-btn" title="Definir a voz selecionada como predefinida">
-                <i class="fa-solid fa-star"></i> Predefinir
-            </button>
-        </div>
-        <p id="default-voice-status" class="default-voice-status" data-current="<?= htmlspecialchars($defaultVoiceId) ?>">
-            <?php if ($defaultVoiceId): ?>
-                <i class="fa-solid fa-star"></i> Voz predefinida atual: <strong id="default-voice-name"><?php
-                    $name = $defaultVoiceId;
-                    foreach ($ttsVoices as $v) {
-                        if ($v['voice_id'] === $defaultVoiceId) { $name = $v['name']; break; }
-                    }
-                    echo htmlspecialchars($name);
-                ?></strong>
-            <?php else: ?>
-                <em>Sem voz predefinida.</em>
-            <?php endif; ?>
-        </p>
-        <?php if ($voicesError): ?>
+        <?php if (empty($ttsVoices)): ?>
             <p class="gong-hint" style="color:#b91c1c;">
-                Não foi possível obter a lista de vozes da ElevenLabs: <?= htmlspecialchars($voicesError) ?>
+                <?= $voicesError
+                    ? 'Não foi possível obter a lista de vozes da ElevenLabs: ' . htmlspecialchars($voicesError)
+                    : 'Sem vozes disponíveis na conta ElevenLabs.' ?>
             </p>
         <?php else: ?>
+            <div class="voices-by-lang">
+            <?php foreach ($voiceByLangState as $lang => $st):
+                $isLangChecked = in_array($lang, $lastLangs, true);
+            ?>
+                <div class="voice-lang-row <?= $isLangChecked ? 'is-active' : 'is-disabled' ?>"
+                     data-lang="<?= htmlspecialchars($lang) ?>">
+                    <div class="voice-lang-head">
+                        <span class="lang-flag"><?= htmlspecialchars($st['flag']) ?></span>
+                        <span class="lang-name"><?= htmlspecialchars($st['label']) ?></span>
+                    </div>
+
+                    <div class="voice-lang-controls">
+                        <select class="voice-accent-filter" data-target-lang="<?= htmlspecialchars($lang) ?>">
+                            <option value="all">Todos os sotaques</option>
+                            <?php foreach ($voicesByAccent as $key => $group): ?>
+                                <option value="<?= htmlspecialchars($key) ?>"
+                                    <?= $key === $st['initial_accent'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($group['label']) ?> (<?= count($group['voices']) ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+
+                        <select name="voice_id_by_lang[<?= htmlspecialchars($lang) ?>]"
+                                class="voice-select voice-select-lang"
+                                data-lang="<?= htmlspecialchars($lang) ?>"
+                                id="voice-select-<?= htmlspecialchars($lang) ?>">
+                            <?php foreach ($voicesByAccent as $accentKey => $group): ?>
+                                <optgroup label="<?= htmlspecialchars($group['label']) ?>" data-accent="<?= htmlspecialchars($accentKey) ?>">
+                                    <?php foreach ($group['voices'] as $v):
+                                        $bits = [];
+                                        if (!empty($v['labels']['gender']))      $bits[] = $v['labels']['gender'];
+                                        if (!empty($v['labels']['description'])) $bits[] = $v['labels']['description'];
+                                        if (!empty($v['labels']['accent']))      $bits[] = $v['labels']['accent'];
+                                        $extra = $bits ? ' — ' . implode(', ', $bits) : '';
+                                        $isDefault = ($v['voice_id'] === $st['default_voice']);
+                                    ?>
+                                        <option value="<?= htmlspecialchars($v['voice_id']) ?>"
+                                            data-accent="<?= htmlspecialchars($accentKey) ?>"
+                                            data-preview="<?= htmlspecialchars($v['preview_url']) ?>"
+                                            data-name="<?= htmlspecialchars($v['name']) ?>"
+                                            <?= ($v['voice_id'] === $st['selected']) ? 'selected' : '' ?>>
+                                            <?= $isDefault ? '★ ' : '' ?>[<?= htmlspecialchars(strtoupper($accentKey)) ?>] <?= htmlspecialchars($v['name'] . $extra) ?><?= $isDefault ? ' (predefinida)' : '' ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </optgroup>
+                            <?php endforeach; ?>
+                        </select>
+
+                        <button type="button" class="preview-btn preview-voice-btn" data-lang="<?= htmlspecialchars($lang) ?>" title="Ouvir amostra">
+                            <i class="fa-solid fa-play"></i>
+                        </button>
+                        <button type="button" class="default-btn set-default-btn"
+                                data-lang="<?= htmlspecialchars($lang) ?>"
+                                data-current="<?= htmlspecialchars($st['default_voice']) ?>"
+                                title="Definir como voz predefinida para <?= htmlspecialchars($st['label']) ?>">
+                            <i class="fa-solid fa-star"></i> Predefinir
+                        </button>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+            </div>
+
             <p class="gong-hint">
-                <strong>Importante:</strong> para PT-PT (Portugal), escolha uma voz marcada como
-                <em>Português (Portugal)</em>. Vozes em inglês a falar PT tendem a soar com sotaque brasileiro/neutro.
-                A mesma voz é usada em todos os idiomas selecionados — para anúncios multilingues, prefira uma voz multilingue (premade).
+                <strong>Dica:</strong> defina uma voz por idioma e clique em <em>Predefinir</em> para guardar. Da próxima vez aparece já selecionada.
+                As linhas dos idiomas não selecionados acima ficam desativadas — mas o seu valor é guardado para uso futuro.
             </p>
         <?php endif; ?>
 
@@ -417,12 +475,112 @@ if ($selectedVoiceId === '') {
   .default-btn.is-current       { background: #ecfdf5; border-color: #34d399; color: #065f46; }
   .default-btn.is-current i     { color: #059669; }
 
-  .default-voice-status {
-    font-size: 0.85rem;
-    color: #4b5563;
-    margin: 4px 0 12px;
+  /* Voz por idioma */
+  .voices-by-lang {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 8px;
   }
-  .default-voice-status i { color: #f59e0b; }
+  .voice-lang-row {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    padding: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #fff;
+    transition: opacity .15s ease, background-color .15s ease;
+  }
+  .voice-lang-row.is-disabled {
+    opacity: .55;
+    background: #f9fafb;
+  }
+  .voice-lang-row.is-active {
+    background: #fff;
+    border-color: #d1d5db;
+  }
+  .voice-lang-head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 70px;
+    padding: 4px 8px;
+    border-right: 1px solid #f3f4f6;
+  }
+  .voice-lang-head .lang-flag {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #1f2937;
+    background: #eef2ff;
+    border-radius: 6px;
+    padding: 2px 8px;
+    letter-spacing: 1px;
+  }
+  .voice-lang-head .lang-name {
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin-top: 4px;
+  }
+  .voice-lang-controls {
+    display: grid;
+    grid-template-columns: minmax(160px, 1fr) minmax(220px, 2fr) auto auto;
+    gap: 8px;
+    flex: 1;
+    align-items: stretch;
+  }
+  .voice-lang-controls .voice-accent-filter {
+    padding: 8px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f9fafb;
+    font-size: 0.85rem;
+  }
+  .voice-lang-controls .voice-select {
+    margin: 0;
+  }
+  .voice-lang-controls .preview-btn,
+  .voice-lang-controls .default-btn {
+    padding: 0 12px;
+    font-size: 0.85rem;
+  }
+
+  @media (max-width: 720px) {
+    .voice-lang-row { flex-direction: column; }
+    .voice-lang-head {
+      flex-direction: row;
+      gap: 10px;
+      border-right: none;
+      border-bottom: 1px solid #f3f4f6;
+      padding-bottom: 8px;
+      min-width: 0;
+      justify-content: flex-start;
+    }
+    .voice-lang-controls {
+      grid-template-columns: 1fr 1fr;
+    }
+    .voice-lang-controls .voice-select { grid-column: 1 / -1; }
+  }
+
+  /* Botão "Definir como predefinida" */
+  .default-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 14px;
+    border: 1px solid #fbbf24;
+    border-radius: 10px;
+    background: #fffbeb;
+    color: #92400e;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color .15s ease, border-color .15s ease;
+  }
+  .default-btn:hover            { background: #fef3c7; border-color: #f59e0b; }
+  .default-btn:disabled         { opacity: .6; cursor: not-allowed; }
+  .default-btn.is-current       { background: #ecfdf5; border-color: #34d399; color: #065f46; }
+  .default-btn.is-current i     { color: #059669; }
 </style>
 
 

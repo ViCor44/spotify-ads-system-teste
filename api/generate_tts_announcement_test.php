@@ -201,26 +201,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
     $customText = trim($_POST['custom_text'] ?? '');
     $playGong   = !empty($_POST['custom_gong']);
 
-    // Voz escolhida pelo utilizador (valida contra a lista da ElevenLabs)
+    // Vozes escolhidas pelo utilizador (uma por idioma).
+    // Fallback: voz predefinida guardada para o idioma -> voz global -> ELEVENLABS_VOICE_ID.
     require_once __DIR__ . '/tts_settings.php';
-    $defaultVoiceId  = tts_get_default_voice_id();
-    $selectedVoiceId = trim((string) ($_POST['voice_id'] ?? ''));
-    if ($selectedVoiceId !== '') {
-        require_once __DIR__ . '/list_elevenlabs_voices.php';
-        try {
-            $availableVoices = get_elevenlabs_voices();
-            $validIds = array_column($availableVoices, 'voice_id');
-            if (!in_array($selectedVoiceId, $validIds, true)) {
-                $selectedVoiceId = $defaultVoiceId;
-            }
-        } catch (Throwable $e) {
-            // Se não conseguirmos validar, aceitamos o valor (formato voice_id da ElevenLabs)
-            if (!preg_match('/^[A-Za-z0-9]{16,}$/', $selectedVoiceId)) {
-                $selectedVoiceId = $defaultVoiceId;
-            }
+    require_once __DIR__ . '/list_elevenlabs_voices.php';
+
+    $voiceByLangPost = $_POST['voice_id_by_lang'] ?? [];
+    if (!is_array($voiceByLangPost)) $voiceByLangPost = [];
+
+    // Carrega lista atual para validar (com fallback graceful)
+    $validVoiceIds = [];
+    try {
+        $availableVoices = get_elevenlabs_voices();
+        $validVoiceIds   = array_column($availableVoices, 'voice_id');
+    } catch (Throwable $e) {
+        $validVoiceIds = []; // sem validação rígida
+    }
+
+    $voiceByLang = [];
+    foreach ($supported as $lng) {
+        $candidate = isset($voiceByLangPost[$lng]) ? trim((string) $voiceByLangPost[$lng]) : '';
+        // Se a voz veio do form e é válida, usa-a; senão usa a preferência guardada para o idioma.
+        if ($candidate !== '' && (empty($validVoiceIds) ? preg_match('/^[A-Za-z0-9]{16,}$/', $candidate) : in_array($candidate, $validVoiceIds, true))) {
+            $voiceByLang[$lng] = $candidate;
+        } else {
+            $voiceByLang[$lng] = tts_get_default_voice_id_for_lang($lng);
         }
-    } else {
-        $selectedVoiceId = $defaultVoiceId;
     }
 
     // Config de línguas (sem voz: a ElevenLabs usa a mesma voz multilingue)
@@ -304,8 +310,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
 
             if ($textToSpeech !== '') {
                 $segments[] = [
-                    'lang' => $lang,
-                    'text' => $textToSpeech,
+                    'lang'     => $lang,
+                    'text'     => $textToSpeech,
+                    'voice_id' => $voiceByLang[$lang] ?? '',
                 ];
             }
         }
@@ -315,7 +322,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
         }
 
         // =================== Cache ===================
-        $voiceId = $selectedVoiceId !== '' ? $selectedVoiceId : (defined('ELEVENLABS_VOICE_ID') ? ELEVENLABS_VOICE_ID : '');
         $modelId = defined('ELEVENLABS_MODEL_ID') ? ELEVENLABS_MODEL_ID : '';
 
         // Parâmetros de áudio uniformes (para concatenar PCM sem clicks)
@@ -327,11 +333,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
         $cacheKeyBase = [
             'provider'         => 'elevenlabs',
             'format'           => 'pcm_wav',
-            'voice'            => $voiceId,
             'model'            => $modelId,
             'announcementType' => $announcementType,
             'segments'         => array_map(function($s){
-                return ['lang' => $s['lang'], 'text' => $s['text']];
+                return ['lang' => $s['lang'], 'text' => $s['text'], 'voice_id' => $s['voice_id']];
             }, $segments),
             'audio' => [
                 'sr'      => $SAMPLE_RATE,
@@ -358,8 +363,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
             $pcmParts = [];
             $lastIdx  = count($segments) - 1;
 
+            $fallbackVoice = defined('ELEVENLABS_VOICE_ID') ? ELEVENLABS_VOICE_ID : '';
             foreach ($segments as $i => $s) {
-                $pcmParts[] = elevenlabs_synthesize_pcm($s['text'], $SAMPLE_RATE, $voiceId, $modelId);
+                $segVoice = !empty($s['voice_id']) ? $s['voice_id'] : $fallbackVoice;
+                $pcmParts[] = elevenlabs_synthesize_pcm($s['text'], $SAMPLE_RATE, $segVoice, $modelId);
                 if ($i !== $lastIdx && $SILENCE_SEC > 0) {
                     $pcmParts[] = pcmSilence($SILENCE_SEC, $SAMPLE_RATE, $CHANNELS, $BITS);
                 }
