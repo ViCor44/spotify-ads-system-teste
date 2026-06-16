@@ -170,9 +170,13 @@ $languageDefs = [
 $defaultVoiceByLang = tts_get_all_default_voices_by_lang();
 $selectedVoiceByLang = $lastData['voice_id_by_lang'] ?? [];
 
+// Sotaques que NÃO entram no grupo "Outras vozes" de NENHUM idioma
+// (são específicos de algum dos idiomas suportados, logo só aparecem na sua linha)
+$languageSpecificAccents = ['pt-pt', 'pt-br', 'pt', 'en-gb', 'en-us', 'en', 'es-es', 'es-419', 'fr-fr'];
+
 $voiceByLangState = [];
 foreach ($languageDefs as $lang => $def) {
-    // Filtra vozes deste idioma (apenas os sotaques preferidos)
+    // 1) Vozes específicas deste idioma (sotaques preferidos)
     $langVoicesByAccent = [];
     foreach ($def['preferred_accents'] as $acc) {
         if (!empty($voicesByAccent[$acc]['voices'])) {
@@ -180,7 +184,22 @@ foreach ($languageDefs as $lang => $def) {
         }
     }
 
-    // Lista plana de vozes deste idioma
+    // 2) Fallback: vozes multilingues/genéricas (qualquer sotaque que não pertença
+    //    especificamente a outro idioma suportado). `eleven_multilingual_v2`
+    //    consegue usar qualquer voz para qualquer idioma, por isso é útil mostrá-las.
+    $multilingualVoices = [];
+    foreach ($voicesByAccent as $accKey => $accGroup) {
+        if (in_array($accKey, $languageSpecificAccents, true)) continue;
+        foreach ($accGroup['voices'] as $v) $multilingualVoices[] = $v;
+    }
+    if (!empty($multilingualVoices)) {
+        $langVoicesByAccent['multilingual'] = [
+            'label'  => 'Outras vozes (multilingue)',
+            'voices' => $multilingualVoices,
+        ];
+    }
+
+    // Lista plana de todas as vozes disponíveis para este idioma
     $langVoicesFlat = [];
     foreach ($langVoicesByAccent as $group) {
         foreach ($group['voices'] as $v) $langVoicesFlat[] = $v;
@@ -315,46 +334,25 @@ foreach ($languageDefs as $lang => $def) {
                         </div>
                     <?php else: ?>
                         <div class="voice-lang-controls">
-                            <?php $accentCount = count($st['voices_by_accent']); ?>
-                            <?php if ($accentCount > 1): ?>
-                                <select class="voice-accent-filter" data-target-lang="<?= htmlspecialchars($lang) ?>">
-                                    <option value="all">Todas as variantes</option>
-                                    <?php foreach ($st['voices_by_accent'] as $key => $group): ?>
-                                        <option value="<?= htmlspecialchars($key) ?>">
-                                            <?= htmlspecialchars($group['label']) ?> (<?= count($group['voices']) ?>)
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            <?php else: ?>
-                                <?php $onlyKey = array_key_first($st['voices_by_accent']); ?>
-                                <div class="voice-lang-singletag">
-                                    <?= htmlspecialchars($st['voices_by_accent'][$onlyKey]['label']) ?>
-                                </div>
-                            <?php endif; ?>
-
                             <select name="voice_id_by_lang[<?= htmlspecialchars($lang) ?>]"
                                     class="voice-select voice-select-lang"
                                     data-lang="<?= htmlspecialchars($lang) ?>"
                                     id="voice-select-<?= htmlspecialchars($lang) ?>">
                                 <?php foreach ($st['voices_by_accent'] as $accentKey => $group): ?>
-                                    <optgroup label="<?= htmlspecialchars($group['label']) ?>" data-accent="<?= htmlspecialchars($accentKey) ?>">
-                                        <?php foreach ($group['voices'] as $v):
-                                            $bits = [];
-                                            if (!empty($v['labels']['gender']))      $bits[] = $v['labels']['gender'];
-                                            if (!empty($v['labels']['description'])) $bits[] = $v['labels']['description'];
-                                            if (!empty($v['labels']['accent']))      $bits[] = $v['labels']['accent'];
-                                            $extra = $bits ? ' — ' . implode(', ', $bits) : '';
-                                            $isDefault = ($v['voice_id'] === $st['default_voice']);
-                                        ?>
-                                            <option value="<?= htmlspecialchars($v['voice_id']) ?>"
-                                                data-accent="<?= htmlspecialchars($accentKey) ?>"
-                                                data-preview="<?= htmlspecialchars($v['preview_url']) ?>"
-                                                data-name="<?= htmlspecialchars($v['name']) ?>"
-                                                <?= ($v['voice_id'] === $st['selected']) ? 'selected' : '' ?>>
-                                                <?= $isDefault ? '★ ' : '' ?><?= htmlspecialchars($v['name'] . $extra) ?><?= $isDefault ? ' (predefinida)' : '' ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </optgroup>
+                                    <?php foreach ($group['voices'] as $v):
+                                        $bits = [];
+                                        if (!empty($v['labels']['gender']))      $bits[] = $v['labels']['gender'];
+                                        if (!empty($v['labels']['description'])) $bits[] = $v['labels']['description'];
+                                        $extra = $bits ? ' — ' . implode(', ', $bits) : '';
+                                        $isDefault = ($v['voice_id'] === $st['default_voice']);
+                                    ?>
+                                        <option value="<?= htmlspecialchars($v['voice_id']) ?>"
+                                            data-preview="<?= htmlspecialchars($v['preview_url']) ?>"
+                                            data-name="<?= htmlspecialchars($v['name']) ?>"
+                                            <?= ($v['voice_id'] === $st['selected']) ? 'selected' : '' ?>>
+                                            <?= $isDefault ? '★ ' : '' ?><?= htmlspecialchars($v['name'] . $extra) ?><?= $isDefault ? ' (predefinida)' : '' ?>
+                                        </option>
+                                    <?php endforeach; ?>
                                 <?php endforeach; ?>
                             </select>
 
@@ -597,17 +595,10 @@ foreach ($languageDefs as $lang => $def) {
   }
   .voice-lang-controls {
     display: grid;
-    grid-template-columns: minmax(160px, 1fr) minmax(220px, 2fr) auto;
+    grid-template-columns: minmax(220px, 1fr) auto auto;
     gap: 8px;
     flex: 1;
     align-items: stretch;
-  }
-  .voice-lang-controls .voice-accent-filter {
-    padding: 8px 10px;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    background: #f9fafb;
-    font-size: 0.85rem;
   }
   .voice-lang-controls .voice-select {
     margin: 0;
@@ -615,17 +606,6 @@ foreach ($languageDefs as $lang => $def) {
   .voice-lang-controls .default-btn {
     padding: 0 12px;
     font-size: 0.85rem;
-  }
-  .voice-lang-singletag {
-    display: inline-flex;
-    align-items: center;
-    padding: 0 10px;
-    font-size: 0.8rem;
-    color: #4b5563;
-    background: #eef2ff;
-    border: 1px solid #c7d2fe;
-    border-radius: 8px;
-    white-space: nowrap;
   }
   .voice-lang-empty {
     display: flex;

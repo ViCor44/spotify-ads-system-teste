@@ -62,40 +62,6 @@ document.addEventListener('DOMContentLoaded', function () {
         return select ? select.options[select.selectedIndex] || null : null;
     }
 
-    // ---- Filtro de sotaque (por linha) ----
-    function applyAccentFilter(lang) {
-        const select = getSelectForLang(lang);
-        const filter = document.querySelector('.voice-accent-filter[data-target-lang="' + lang + '"]');
-        if (!select || !filter) return;
-
-        const wanted = filter.value;
-        let firstVisible = null;
-
-        Array.from(select.options).forEach(opt => {
-            const accent = opt.getAttribute('data-accent') || '';
-            const show   = (wanted === 'all') || (accent === wanted);
-            opt.hidden   = !show;
-            opt.disabled = !show;
-            if (show && !firstVisible) firstVisible = opt;
-        });
-        Array.from(select.querySelectorAll('optgroup')).forEach(g => {
-            const accent = g.getAttribute('data-accent') || '';
-            g.hidden = (wanted !== 'all' && accent !== wanted);
-        });
-
-        const cur = getSelectedOption(select);
-        if ((!cur || cur.hidden) && firstVisible) {
-            select.value = firstVisible.value;
-            select.dispatchEvent(new Event('change'));
-        }
-    }
-
-    document.querySelectorAll('.voice-accent-filter').forEach(filter => {
-        const lang = filter.getAttribute('data-target-lang');
-        filter.addEventListener('change', () => applyAccentFilter(lang));
-        applyAccentFilter(lang); // estado inicial
-    });
-
     // ---- Botão "Predefinir" (por idioma) ----
     function refreshDefaultBtnState(btn) {
         const lang    = btn.getAttribute('data-lang');
@@ -116,14 +82,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const select = getSelectForLang(lang);
         if (!select) return;
         Array.from(select.options).forEach(opt => {
-            const name   = opt.getAttribute('data-name') || '';
-            const accent = (opt.getAttribute('data-accent') || '').toUpperCase();
+            const name = opt.getAttribute('data-name') || '';
             // Tenta preservar os extras "— gender, description..."
             const m = opt.textContent.match(/—\s*([^()]+?)(?:\s*\(predefinida\))?\s*$/);
             const extra = m ? ' — ' + m[1].trim() : '';
             const star   = (opt.value === newDefaultVoiceId) ? '★ ' : '';
             const suffix = (opt.value === newDefaultVoiceId) ? ' (predefinida)' : '';
-            opt.textContent = star + '[' + accent + '] ' + name + extra + suffix;
+            opt.textContent = star + name + extra + suffix;
         });
     }
 
