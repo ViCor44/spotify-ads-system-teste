@@ -170,49 +170,28 @@ $languageDefs = [
 $defaultVoiceByLang = tts_get_all_default_voices_by_lang();
 $selectedVoiceByLang = $lastData['voice_id_by_lang'] ?? [];
 
-// Sotaques que NÃO entram no grupo "Outras vozes" de NENHUM idioma
-// (são específicos de algum dos idiomas suportados, logo só aparecem na sua linha)
-$languageSpecificAccents = ['pt-pt', 'pt-br', 'pt', 'en-gb', 'en-us', 'en', 'es-es', 'es-419', 'fr-fr'];
+// Como `eleven_multilingual_v2` consegue usar qualquer voz para qualquer idioma,
+// mostramos TODAS as vozes da conta em cada linha de idioma. O utilizador escolhe
+// e define como predefinida a que preferir para cada idioma.
+$allVoicesGroup = [
+    'label'  => 'Todas as vozes',
+    'voices' => $ttsVoices,
+];
 
 $voiceByLangState = [];
 foreach ($languageDefs as $lang => $def) {
-    // 1) Vozes específicas deste idioma (sotaques preferidos)
-    $langVoicesByAccent = [];
-    foreach ($def['preferred_accents'] as $acc) {
-        if (!empty($voicesByAccent[$acc]['voices'])) {
-            $langVoicesByAccent[$acc] = $voicesByAccent[$acc];
-        }
-    }
-
-    // 2) Fallback: vozes multilingues/genéricas (qualquer sotaque que não pertença
-    //    especificamente a outro idioma suportado). `eleven_multilingual_v2`
-    //    consegue usar qualquer voz para qualquer idioma, por isso é útil mostrá-las.
-    $multilingualVoices = [];
-    foreach ($voicesByAccent as $accKey => $accGroup) {
-        if (in_array($accKey, $languageSpecificAccents, true)) continue;
-        foreach ($accGroup['voices'] as $v) $multilingualVoices[] = $v;
-    }
-    if (!empty($multilingualVoices)) {
-        $langVoicesByAccent['multilingual'] = [
-            'label'  => 'Outras vozes (multilingue)',
-            'voices' => $multilingualVoices,
-        ];
-    }
-
-    // Lista plana de todas as vozes disponíveis para este idioma
-    $langVoicesFlat = [];
-    foreach ($langVoicesByAccent as $group) {
-        foreach ($group['voices'] as $v) $langVoicesFlat[] = $v;
-    }
+    $langVoicesByAccent = !empty($ttsVoices)
+        ? ['all' => $allVoicesGroup]
+        : [];
 
     $defaultVoice = $defaultVoiceByLang[$lang] ?? '';
     $selected     = !empty($selectedVoiceByLang[$lang]) ? $selectedVoiceByLang[$lang] : $defaultVoice;
 
-    // Valida: se a voz selecionada não existir entre as vozes deste idioma,
-    // cai para a primeira voz do sotaque preferido com vozes disponíveis.
-    $langValidIds = array_column($langVoicesFlat, 'voice_id');
-    if (!in_array($selected, $langValidIds, true)) {
-        $selected = !empty($langVoicesFlat) ? $langVoicesFlat[0]['voice_id'] : '';
+    // Valida: se a voz selecionada não existir entre as vozes da conta,
+    // cai para a primeira voz disponível.
+    $validIds = array_column($ttsVoices, 'voice_id');
+    if (!in_array($selected, $validIds, true)) {
+        $selected = !empty($ttsVoices) ? $ttsVoices[0]['voice_id'] : '';
     }
 
     $voiceByLangState[$lang] = [
@@ -221,7 +200,7 @@ foreach ($languageDefs as $lang => $def) {
         'default_voice'     => $defaultVoice,
         'selected'          => $selected,
         'voices_by_accent'  => $langVoicesByAccent,
-        'has_voices'        => !empty($langVoicesFlat),
+        'has_voices'        => !empty($ttsVoices),
     ];
 }
 ?>
