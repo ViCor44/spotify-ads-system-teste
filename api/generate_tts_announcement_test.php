@@ -112,7 +112,7 @@ function wavBuildFromPcm(string $pcm, int $channels, int $sampleRate, int $bits)
  * Sintetiza voz via ElevenLabs em PCM bruto (16-bit signed little-endian, mono).
  * Devolve apenas os bytes PCM (sem cabeçalho WAV) para serem concatenados.
  */
-function elevenlabs_synthesize_pcm(string $text, int $sampleRate, ?string $voiceId = null, ?string $modelId = null): string {
+function elevenlabs_synthesize_pcm(string $text, int $sampleRate, ?string $voiceId = null, ?string $modelId = null, ?array $voiceSettings = null): string {
     if (!defined('ELEVENLABS_API_KEY') || ELEVENLABS_API_KEY === '' || ELEVENLABS_API_KEY === 'SUBSTITUIR_PELA_API_KEY_DA_ELEVENLABS') {
         throw new Exception("ELEVENLABS_API_KEY não configurada em config/database.php.");
     }
@@ -126,6 +126,12 @@ function elevenlabs_synthesize_pcm(string $text, int $sampleRate, ?string $voice
         $sampleRate = 22050;
     }
     $outputFormat = 'pcm_' . $sampleRate;
+    // Se não for fornecido voice_settings, carrega do storage
+    if ($voiceSettings === null) {
+        require_once __DIR__ . '/tts_settings.php';
+        $voiceSettings = tts_get_voice_settings();
+    }
+
 
     static $http = null;
     if ($http === null) {
@@ -146,12 +152,7 @@ function elevenlabs_synthesize_pcm(string $text, int $sampleRate, ?string $voice
         'json' => [
             'text'           => $text,
             'model_id'       => $modelId,
-            'voice_settings' => [
-                'stability'         => 0.45,
-                'similarity_boost'  => 0.85,
-                'style'             => 0.20,
-                'use_speaker_boost' => true,
-            ],
+            'voice_settings' => $voiceSettings,
         ],
     ]);
 

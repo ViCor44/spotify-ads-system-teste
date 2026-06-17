@@ -52,6 +52,53 @@ document.addEventListener('DOMContentLoaded', function () {
             generateBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> A gerar áudio...';
         }
     });
+    // =================== Voice Settings (Sliders) ===================
+    const voiceSettingSliders = ttsForm.querySelectorAll('.voice-setting-slider');
+    const voiceBoostCheckbox = ttsForm.querySelector('#voice-boost');
+    let voiceSettingTimeout = null;
+
+    function updateVoiceSettingValue(slider) {
+        const target = slider.getAttribute('data-target');
+        const valueSpan = ttsForm.querySelector('[data-target="' + target + '"]');
+        if (valueSpan) {
+            valueSpan.textContent = slider.value + '%';
+        }
+    }
+
+    function saveVoiceSettings() {
+        const fd = new FormData();
+        voiceSettingSliders.forEach(slider => {
+            const setting = slider.getAttribute('data-setting');
+            const value = Math.max(0, Math.min(100, parseInt(slider.value))) / 100;
+            fd.append(setting, value);
+        });
+        if (voiceBoostCheckbox) {
+            fd.append('use_speaker_boost', voiceBoostCheckbox.checked ? '1' : '0');
+        }
+
+        fetch('../api/tts_settings.php', { method: 'POST', body: fd })
+            .then(r => r.json().catch(() => ({})))
+            .then(data => {
+                if (!data.ok) {
+                    console.error('Erro ao guardar voice_settings:', data);
+                }
+            })
+            .catch(err => console.error('Erro ao guardar voice_settings:', err));
+    }
+
+    voiceSettingSliders.forEach(slider => {
+        updateVoiceSettingValue(slider);
+        slider.addEventListener('input', () => {
+            updateVoiceSettingValue(slider);
+            clearTimeout(voiceSettingTimeout);
+            voiceSettingTimeout = setTimeout(saveVoiceSettings, 800);
+        });
+    });
+
+    if (voiceBoostCheckbox) {
+        voiceBoostCheckbox.addEventListener('change', saveVoiceSettings);
+    }
+
 
     // =================== Voz por Idioma ===================
 

@@ -8,6 +8,9 @@ $lastData = $_SESSION['last_tts_data'] ?? [];
 $defaultGong = array_key_exists('custom_gong', $lastData)
     ? (int)!empty($lastData['custom_gong'])
     : 1; // <- predefinição ligada
+// Carrega voice_settings (estabilidade, similaridade, estilo, amplificador)
+$ttsVoiceSettings = tts_get_voice_settings();
+
 
 // Carrega vozes ElevenLabs (com cache). Em caso de falha, mostra apenas a voz default.
 $ttsVoices  = [];
@@ -279,6 +282,33 @@ foreach ($languageDefs as $lang => $def) {
         </div>
         
         <p style="font-size: 0.9em; color: #6c757d; margin-top: -10px; margin-bottom: 20px;">Pelo menos um idioma deve ser selecionado.</p>
+    <!-- Controlos de voz (naturalidade e estilo) -->
+    <label style="display: block; margin-bottom: 8px;"><i class="fa-solid fa-sliders"></i> Ajustes de Voz</label>
+    <div class="voice-settings-group">
+      <div class="voice-setting-row">
+        <label for="voice-stability">Estabilidade:</label>
+        <input type="range" id="voice-stability" class="voice-setting-slider" name="voice_settings[stability]" min="0" max="100" value="<?= (int)($ttsVoiceSettings['stability'] * 100) ?>" data-setting="stability">
+        <span class="voice-setting-value" data-target="voice-stability"><?= (int)($ttsVoiceSettings['stability'] * 100) ?>%</span>
+      </div>
+      <div class="voice-setting-row">
+        <label for="voice-similarity">Similaridade da Voz:</label>
+        <input type="range" id="voice-similarity" class="voice-setting-slider" name="voice_settings[similarity_boost]" min="0" max="100" value="<?= (int)($ttsVoiceSettings['similarity_boost'] * 100) ?>" data-setting="similarity_boost">
+        <span class="voice-setting-value" data-target="voice-similarity"><?= (int)($ttsVoiceSettings['similarity_boost'] * 100) ?>%</span>
+      </div>
+      <div class="voice-setting-row">
+        <label for="voice-style">Estilo:</label>
+        <input type="range" id="voice-style" class="voice-setting-slider" name="voice_settings[style]" min="0" max="100" value="<?= (int)($ttsVoiceSettings['style'] * 100) ?>" data-setting="style">
+        <span class="voice-setting-value" data-target="voice-style"><?= (int)($ttsVoiceSettings['style'] * 100) ?>%</span>
+      </div>
+      <div class="voice-setting-row voice-setting-checkbox">
+        <input type="checkbox" id="voice-boost" name="voice_settings[use_speaker_boost]" value="1" <?= $ttsVoiceSettings['use_speaker_boost'] ? 'checked' : '' ?>>
+        <label for="voice-boost">Amplificador do Orador (melhora a clareza)</label>
+      </div>
+    </div>
+    <p class="gong-hint" style="margin-bottom: 20px;">
+      <strong>Dicas:</strong> Estabilidade (0-100) define a variação da voz; inferior = mais expressivo, superior = mais consistente. Similaridade (0-100) = quão próximo da voz original. Estilo (0-100) = intensidade do caractér. Amplificador = melhora a presença da voz.
+    </p>
+
 
         <!-- Seletores de Voz por Idioma (ElevenLabs) -->
         <label>Voz por Idioma:</label>
@@ -734,6 +764,83 @@ foreach ($languageDefs as $lang => $def) {
     border-radius: 8px;
   }
   .add-voice-hint.error { color: #b91c1c; border-color: #fca5a5; background: #fef2f2; }
+  /* ===================== Voice Settings (Sliders) ===================== */
+  .voice-settings-group {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 12px 14px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    margin-bottom: 14px;
+  }
+  .voice-setting-row {
+    display: grid;
+    grid-template-columns: 140px 1fr 60px;
+    gap: 12px;
+    align-items: center;
+  }
+  .voice-setting-row label {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #374151;
+    margin: 0;
+  }
+  .voice-setting-slider {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: #d1d5db;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .voice-setting-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #2563eb;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,.15);
+  }
+  .voice-setting-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #2563eb;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,.15);
+  }
+  .voice-setting-slider:focus::-webkit-slider-thumb {
+    box-shadow: 0 0 0 4px rgba(37,99,235,.2);
+  }
+  .voice-setting-value {
+    text-align: center;
+    font-weight: 600;
+    color: #2563eb;
+    font-size: 0.9rem;
+    min-width: 50px;
+  }
+  .voice-setting-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    grid-column: 1 / -1;
+  }
+  .voice-setting-checkbox input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+  }
+  .voice-setting-checkbox label {
+    margin: 0;
+    cursor: pointer;
+  }
+
 
   /* ===================== Modal global ===================== */
   .add-voice-modal {

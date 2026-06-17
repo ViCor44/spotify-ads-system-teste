@@ -72,6 +72,30 @@ if (!function_exists('tts_settings_path')) {
         }
         return $out;
     }
+
+    /** Devolve voice_settings (stability, similarity_boost, style, use_speaker_boost). */
+    function tts_get_voice_settings(): array {
+        $s = tts_settings_read();
+        return isset($s['voice_settings']) && is_array($s['voice_settings'])
+            ? $s['voice_settings']
+            : [
+                'stability'         => 0.45,
+                'similarity_boost'  => 0.85,
+                'style'             => 0.20,
+                'use_speaker_boost' => true,
+            ];
+    }
+
+    /** Escreve voice_settings e guarda no storage. */
+    function tts_set_voice_settings(float $stability = 0.45, float $similarity_boost = 0.85, float $style = 0.20, bool $use_speaker_boost = true): bool {
+        $settings = [
+            'stability'         => max(0.0, min(1.0, (float) $stability)),
+            'similarity_boost'  => max(0.0, min(1.0, (float) $similarity_boost)),
+            'style'             => max(0.0, min(1.0, (float) $style)),
+            'use_speaker_boost' => (bool) $use_speaker_boost,
+        ];
+        return tts_settings_write(['voice_settings' => $settings]);
+    }
 }
 
 // --- Endpoint HTTP (POST set | GET get) ---
@@ -85,6 +109,25 @@ if (PHP_SAPI !== 'cli' && basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basena
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $voiceId = trim((string) ($_POST['voice_id'] ?? ''));
             $lang    = strtolower(trim((string) ($_POST['lang'] ?? '')));
+            // Novo: guardar voice_settings (stability, similarity_boost, style, use_speaker_boost)
+            if (!empty($_POST['stability']) || !empty($_POST['similarity_boost']) || !empty($_POST['style']) || isset($_POST['use_speaker_boost'])) {
+                $stability         = (float) ($_POST['stability'] ?? 0.45);
+                $similarity_boost  = (float) ($_POST['similarity_boost'] ?? 0.85);
+                $style             = (float) ($_POST['style'] ?? 0.20);
+                $use_speaker_boost = (bool) ($_POST['use_speaker_boost'] ?? true);
+
+                if (tts_set_voice_settings($stability, $similarity_boost, $style, $use_speaker_boost)) {
+                    echo json_encode([
+                        'ok'                => true,
+                        'type'              => 'voice_settings',
+                        'voice_settings'    => tts_get_voice_settings(),
+                    ]);
+                } else {
+                    throw new Exception('Erro ao guardar voice_settings.');
+                }
+                exit;
+            }
+
 
             if ($voiceId === '') {
                 throw new Exception('voice_id em falta.');
