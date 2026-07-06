@@ -7,12 +7,15 @@ if (php_sapi_name() !== 'cli') {
 }
 
 require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../api/StatusStore.php';
 use App\Database;
 use App\SpotifyClient;
+use SpotMaster\Api\StatusStore;
 
 // Define o fuso horário e os caminhos dos ficheiros de controlo
 date_default_timezone_set('Europe/Lisbon');
 $lockFilePath = __DIR__ . '/schedule.lock';
+$processedScheduleFilePath = __DIR__ . '/last_processed_schedule.json';
 $heartbeatFile = __DIR__ . '/../public/robot_heartbeat.log'; // Caminho na pasta public
 
 // Lógica de Bloqueio (Lock File) para impedir execuções sobrepostas
@@ -35,6 +38,7 @@ echo "Verificacao iniciada em: " . $now->format('Y-m-d H:i:s') . "\n";
 
 try {
     $pdo = Database::getInstance();
+    $statusStore = new StatusStore(__DIR__ . '/../public/status.json');
     $currentDayOfWeek = (int)$now->format('N');
 
     // 1. Vai buscar TODOS os agendamentos ativos para o dia de hoje
@@ -67,6 +71,16 @@ try {
     if ($scheduleFound) {
         echo "AGENDAMENTO ENCONTRADO (ID: " . $scheduleFound['id'] . ")!\n";
 
+        $scheduleOccurrenceKey = $scheduleFound['id'] . '@' . $scheduledTime->format('Y-m-d H:i');
+        $lastProcessed = null;
+        if (file_exists($processedScheduleFilePath)) {
+            $lastProcessed = json_decode((string) file_get_contents($processedScheduleFilePath), true);
+        }
+        if (is_array($lastProcessed) && ($lastProcessed['occurrence_key'] ?? null) === $scheduleOccurrenceKey) {
+            echo "Agendamento deste minuto ja foi processado. Ignorando repeticao.\n";
+            exit;
+        }
+
         $announcementId = $scheduleFound['announcement_id'];
         
         // Vai buscar todos os detalhes do anúncio
@@ -93,13 +107,21 @@ try {
                 'duration' => (int)$announcement['duration_seconds'],
                 'initial_state' => $initialState // A nossa "memória de estado"
             ];
-            file_put_contents(__DIR__ . '/../public/status.json', json_encode($status));
+            $statusStore->write($status);
             echo "Ficheiro status.json atualizado com estado inicial.\n";
 
             // Regista a atividade na base de dados
             $logStmt = $pdo->prepare("INSERT INTO activity_logs (announcement_title, play_type) VALUES (?, 'Automático')");
             $logStmt->execute([$announcement['title']]);
             echo "Atividade registada na base de dados.\n";
+
+            file_put_contents($processedScheduleFilePath, json_encode([
+                'occurrence_key' => $scheduleOccurrenceKey,
+                'schedule_id' => (int)$scheduleFound['id'],
+                'announcement_id' => (int)$announcementId,
+                'processed_at' => $now->format(DateTime::ATOM)
+            ]), LOCK_EX);
+            echo "Marcador de execucao do minuto atualizado.\n";
             
             echo "Processo concluido com sucesso.\n";
             exit; // Sai depois de processar o primeiro anúncio do minuto

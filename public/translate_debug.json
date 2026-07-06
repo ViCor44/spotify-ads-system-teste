@@ -1,13 +1,13 @@
 {
     "request": {
-        "text": "Hello",
-        "target": "en",
+        "text": "Olá, eu sou um novo anuncio!",
+        "target": "fr",
         "source": null
     },
     "response": {
-        "source": "en",
-        "input": "Hello",
-        "text": "Hello",
+        "source": "pt",
+        "input": "Olá, eu sou um novo anuncio!",
+        "text": "Bonjour, je suis une nouvelle annonce !",
         "model": null
     }
 }
