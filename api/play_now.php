@@ -58,6 +58,7 @@ try {
         'has_gong'      => false,
         'duration'      => $duration,
         'initial_state' => $initialState,
+        'play_id'       => 'manual-' . $announcementId . '-' . uniqid('', true), // Identificador único deste clique manual
         'ts'            => time(),
     ];
 

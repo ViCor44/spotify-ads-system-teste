@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let isPlayingAd = false;
     let lastAdInitialState = 'paused';
     let lastAdTitle = null;
+    let lastPlayedKey = null; // Dedup: evita tocar o mesmo anúncio duas vezes se o status.json ainda não foi limpo
     
     // --- 2. FUNÇÕES ---
 
@@ -43,7 +44,14 @@ document.addEventListener('DOMContentLoaded', function () {
             if (response.ok) {
                 const data = await response.json();
                 if (data.status === 'play') {
-                    
+
+                    // Dedup: se o mesmo pedido de reprodução já foi processado,
+                    // ignora (evita replay enquanto o clear_status.php ainda está
+                    // a caminho do servidor após um 'ended').
+                    const playKey = data.play_id || `${data.title || ''}|${data.url || ''}|${data.ts || ''}`;
+                    if (playKey && playKey === lastPlayedKey) return;
+                    lastPlayedKey = playKey;
+
                     isPlayingAd = true;
                     window.addEventListener('beforeunload', beforeUnloadListener);
                     
@@ -278,14 +286,23 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- 3. INICIALIZAÇÃO E EVENTOS ---
     if (adPlayer) {
         adPlayer.addEventListener('ended', () => {
-            isPlayingAd = false;
-            clearStatusFile();
             window.removeEventListener('beforeunload', beforeUnloadListener);
             if (liveCountdownInterval) clearInterval(liveCountdownInterval);
             const nextAdCardTitle = document.getElementById('next-ad-card-title');
             if (nextAdCardTitle) {
                 nextAdCardTitle.innerHTML = `<i class="fa-solid fa-forward-step"></i> Próximo Anúncio`;
             }
+
+            // IMPORTANTE: só libertar isPlayingAd DEPOIS de o status.json estar
+            // efetivamente limpo no servidor. Caso contrário, o polling (1500ms)
+            // pode voltar a ler status='play' e reproduzir o anúncio outra vez
+            // sem que o Spotify seja pausado (a segunda vez não corta a música).
+            clearStatusFile()
+                .catch(() => {})
+                .finally(() => {
+                    isPlayingAd = false;
+                });
+
             fetch(`${rootPath}/api/announcement_finished.php?initial_state=${lastAdInitialState}&title=${encodeURIComponent(lastAdTitle)}`)
                 .then(() => {
                     updateNextAnnouncementCard().then(startCountdown);

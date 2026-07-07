@@ -105,7 +105,9 @@ try {
                 'url' => '/uploads/' . $announcement['file_path'],
                 'title' => $announcement['title'],
                 'duration' => (int)$announcement['duration_seconds'],
-                'initial_state' => $initialState // A nossa "memória de estado"
+                'initial_state' => $initialState, // A nossa "memória de estado"
+                'play_id' => 'sched-' . $scheduleFound['id'] . '-' . $scheduledTime->format('YmdHi'), // Identificador único desta ocorrência (usado pelo JS para deduplicar)
+                'ts' => time()
             ];
             $statusStore->write($status);
             echo "Ficheiro status.json atualizado com estado inicial.\n";
