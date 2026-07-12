@@ -31,7 +31,7 @@ if (!function_exists('get_elevenlabs_voices')) {
         if (!$forceRefresh && is_file($cacheFile) && (time() - filemtime($cacheFile) < $ttlSeconds)) {
             $cached = json_decode((string) file_get_contents($cacheFile), true);
             if (is_array($cached) && !empty($cached)) {
-                return $cached;
+                return _elevenlabs_merge_custom_voices($cached);
             }
         }
 
@@ -60,7 +60,7 @@ if (!function_exists('get_elevenlabs_voices')) {
             if (is_file($cacheFile)) {
                 $cached = json_decode((string) file_get_contents($cacheFile), true);
                 if (is_array($cached) && !empty($cached)) {
-                    return $cached;
+                    return _elevenlabs_merge_custom_voices($cached);
                 }
             }
             throw new Exception("ElevenLabs /v1/voices falhou (HTTP $status): " . substr($body, 0, 300));
@@ -92,6 +92,23 @@ if (!function_exists('get_elevenlabs_voices')) {
             @file_put_contents($cacheFile, json_encode($voices, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
         }
 
+        return _elevenlabs_merge_custom_voices($voices);
+    }
+
+    /**
+     * Junta as vozes adicionadas manualmente por ID (guardadas em tts_settings.json)
+     * à lista da conta. Evita duplicados.
+     */
+    function _elevenlabs_merge_custom_voices(array $voices): array {
+        require_once __DIR__ . '/tts_settings.php';
+        $custom = tts_get_custom_voices();
+        if (empty($custom)) return $voices;
+
+        $existing = array_column($voices, 'voice_id');
+        foreach ($custom as $cv) {
+            if (in_array($cv['voice_id'], $existing, true)) continue;
+            $voices[] = $cv;
+        }
         return $voices;
     }
 }

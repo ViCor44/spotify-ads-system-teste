@@ -11,6 +11,10 @@ $defaultGong = array_key_exists('custom_gong', $lastData)
 // Carrega voice_settings (estabilidade, similaridade, estilo, amplificador)
 $ttsVoiceSettings = tts_get_voice_settings();
 
+// Modelo ativo (v2 / v3 / turbo / flash) e lista de modelos suportados
+$ttsModelId       = tts_get_model_id();
+$ttsSupportedMods = tts_supported_models();
+
 
 // Carrega vozes ElevenLabs (com cache). Em caso de falha, mostra apenas a voz default.
 $ttsVoices  = [];
@@ -285,6 +289,17 @@ foreach ($languageDefs as $lang => $def) {
     <!-- Controlos de voz (naturalidade e estilo) -->
     <label style="display: block; margin-bottom: 8px;"><i class="fa-solid fa-sliders"></i> Ajustes de Voz</label>
     <div class="voice-settings-group">
+      <div class="voice-setting-row voice-setting-model">
+        <label for="voice-model">Modelo ElevenLabs:</label>
+        <select id="voice-model" class="voice-model-select">
+          <?php foreach ($ttsSupportedMods as $mid => $mlabel): ?>
+            <option value="<?= htmlspecialchars($mid) ?>" <?= ($mid === $ttsModelId) ? 'selected' : '' ?>>
+              <?= htmlspecialchars($mlabel) ?>
+            </option>
+          <?php endforeach; ?>
+        </select>
+        <span class="voice-model-status" id="voice-model-status" aria-live="polite"></span>
+      </div>
       <div class="voice-setting-row">
         <label for="voice-stability">Estabilidade:</label>
         <input type="range" id="voice-stability" class="voice-setting-slider" name="voice_settings[stability]" min="0" max="100" value="<?= (int)($ttsVoiceSettings['stability'] * 100) ?>" data-setting="stability">
@@ -424,6 +439,25 @@ foreach ($languageDefs as $lang => $def) {
                     <i class="fa-solid fa-magnifying-glass"></i> Procurar
                 </button>
             </div>
+
+            <!-- Adicionar voz manualmente por ID (v3, partilhadas, etc.) -->
+            <div class="add-voice-by-id">
+                <div class="add-voice-by-id__title">
+                    <i class="fa-solid fa-key"></i> Adicionar voz por ID
+                </div>
+                <p class="add-voice-by-id__hint">
+                    Cola aqui o <code>voice_id</code> (útil para vozes do modelo <strong>v3</strong> ou outras não listadas). Fica guardado localmente e passa a aparecer no seletor.
+                </p>
+                <div class="add-voice-by-id__row">
+                    <input type="text" class="add-voice-id-input" placeholder="voice_id (ex.: 21m00Tcm4TlvDq8ikWAM)">
+                    <input type="text" class="add-voice-id-name" placeholder="Nome (opcional)">
+                    <button type="button" class="add-voice-id-btn">
+                        <i class="fa-solid fa-plus"></i> Adicionar por ID
+                    </button>
+                </div>
+                <p class="add-voice-id-feedback" aria-live="polite"></p>
+            </div>
+
             <div class="add-voice-results">
                 <p class="add-voice-hint"><i class="fa-solid fa-info-circle"></i> A pesquisar vozes na biblioteca pública da ElevenLabs…</p>
             </div>
@@ -945,6 +979,96 @@ foreach ($languageDefs as $lang => $def) {
   .default-btn:disabled         { opacity: .6; cursor: not-allowed; }
   .default-btn.is-current       { background: #ecfdf5; border-color: #34d399; color: #065f46; }
   .default-btn.is-current i     { color: #059669; }
+
+  /* Seletor de modelo ElevenLabs */
+  .voice-setting-model {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed #e5e7eb;
+    margin-bottom: 8px;
+  }
+  .voice-setting-model label { min-width: 160px; margin: 0; }
+  .voice-model-select {
+    flex: 1 1 240px;
+    padding: 6px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #fff;
+    font-size: 0.95rem;
+  }
+  .voice-model-status {
+    font-size: 0.85rem;
+    color: #6b7280;
+    min-height: 1em;
+  }
+  .voice-model-status.is-ok    { color: #059669; }
+  .voice-model-status.is-err   { color: #b91c1c; }
+
+  /* "Adicionar voz por ID" no modal */
+  .add-voice-by-id {
+    margin: 12px 0 16px;
+    padding: 12px 14px;
+    border: 1px dashed #93c5fd;
+    background: #eff6ff;
+    border-radius: 10px;
+  }
+  .add-voice-by-id__title {
+    font-weight: 600;
+    color: #1e3a8a;
+    margin-bottom: 4px;
+  }
+  .add-voice-by-id__title i { color: #2563eb; margin-right: 4px; }
+  .add-voice-by-id__hint {
+    font-size: 0.85rem;
+    color: #475569;
+    margin: 0 0 8px;
+  }
+  .add-voice-by-id__hint code {
+    background: #dbeafe;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 0.85em;
+  }
+  .add-voice-by-id__row {
+    display: grid;
+    grid-template-columns: 2fr 1fr auto;
+    gap: 8px;
+  }
+  .add-voice-by-id__row input {
+    padding: 6px 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    background: #fff;
+  }
+  .add-voice-id-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid #2563eb;
+    background: #2563eb;
+    color: #fff;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  .add-voice-id-btn:hover     { background: #1d4ed8; border-color: #1d4ed8; }
+  .add-voice-id-btn:disabled  { opacity: .6; cursor: not-allowed; }
+  .add-voice-id-feedback {
+    margin: 6px 0 0;
+    font-size: 0.85rem;
+    min-height: 1em;
+    color: #334155;
+  }
+  .add-voice-id-feedback.is-ok  { color: #059669; }
+  .add-voice-id-feedback.is-err { color: #b91c1c; }
+  @media (max-width: 640px) {
+    .add-voice-by-id__row { grid-template-columns: 1fr; }
+  }
 </style>
 
 

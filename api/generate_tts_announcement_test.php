@@ -118,7 +118,10 @@ function elevenlabs_synthesize_pcm(string $text, int $sampleRate, ?string $voice
     }
 
     $voiceId = $voiceId ?: (defined('ELEVENLABS_VOICE_ID') ? ELEVENLABS_VOICE_ID : '21m00Tcm4TlvDq8ikWAM');
-    $modelId = $modelId ?: (defined('ELEVENLABS_MODEL_ID') ? ELEVENLABS_MODEL_ID : 'eleven_multilingual_v2');
+    if (!$modelId) {
+        require_once __DIR__ . '/tts_settings.php';
+        $modelId = tts_get_model_id();
+    }
 
     // ElevenLabs aceita pcm_16000, pcm_22050, pcm_24000, pcm_44100.
     $allowed = [16000, 22050, 24000, 44100];
@@ -323,7 +326,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
         }
 
         // =================== Cache ===================
-        $modelId = defined('ELEVENLABS_MODEL_ID') ? ELEVENLABS_MODEL_ID : '';
+        require_once __DIR__ . '/tts_settings.php';
+        $modelId = tts_get_model_id();
 
         // Parâmetros de áudio uniformes (para concatenar PCM sem clicks)
         $SAMPLE_RATE = 22050;

@@ -99,6 +99,42 @@ document.addEventListener('DOMContentLoaded', function () {
         voiceBoostCheckbox.addEventListener('change', saveVoiceSettings);
     }
 
+    // =================== Seletor de Modelo (v2 / v3 / turbo / flash) ===================
+    const modelSelect = document.getElementById('voice-model');
+    const modelStatus = document.getElementById('voice-model-status');
+
+    function setModelStatus(msg, cls) {
+        if (!modelStatus) return;
+        modelStatus.className = 'voice-model-status' + (cls ? ' ' + cls : '');
+        modelStatus.textContent = msg || '';
+        if (msg && cls === 'is-ok') {
+            setTimeout(() => {
+                if (modelStatus.textContent === msg) setModelStatus('', '');
+            }, 2500);
+        }
+    }
+
+    if (modelSelect) {
+        modelSelect.addEventListener('change', async () => {
+            const modelId = modelSelect.value;
+            setModelStatus('A guardar…', '');
+            try {
+                const fd = new FormData();
+                fd.append('action', 'set_model');
+                fd.append('model_id', modelId);
+                const resp = await fetch('../api/tts_settings.php', { method: 'POST', body: fd });
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok || !data.ok) {
+                    throw new Error(data.error || ('HTTP ' + resp.status));
+                }
+                setModelStatus('Modelo guardado: ' + data.model_id, 'is-ok');
+            } catch (err) {
+                console.error('Erro ao guardar modelo:', err);
+                setModelStatus('Erro: ' + err.message, 'is-err');
+            }
+        });
+    }
+
 
     // =================== Voz por Idioma ===================
 
@@ -194,6 +230,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const modalGenderSel = modal ? modal.querySelector('.add-voice-gender')       : null;
     const modalSearchBtn = modal ? modal.querySelector('.add-voice-search-btn')   : null;
     const modalResults   = modal ? modal.querySelector('.add-voice-results')      : null;
+    const modalIdInput   = modal ? modal.querySelector('.add-voice-id-input')     : null;
+    const modalIdName    = modal ? modal.querySelector('.add-voice-id-name')      : null;
+    const modalIdBtn     = modal ? modal.querySelector('.add-voice-id-btn')       : null;
+    const modalIdFeedback= modal ? modal.querySelector('.add-voice-id-feedback')  : null;
     let modalLang        = '';
 
     function openModal(lang, label) {
@@ -202,6 +242,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (modalLangLabel) modalLangLabel.textContent = label || (lang ? lang.toUpperCase() : '—');
         if (modalSearchInp) modalSearchInp.value = '';
         if (modalGenderSel) modalGenderSel.value = '';
+        if (modalIdInput)   modalIdInput.value = '';
+        if (modalIdName)    modalIdName.value = '';
+        if (modalIdFeedback) { modalIdFeedback.textContent = ''; modalIdFeedback.className = 'add-voice-id-feedback'; }
         modal.hidden = false;
         modal.setAttribute('aria-hidden', 'false');
         document.body.style.overflow = 'hidden';
@@ -337,6 +380,60 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (modalGenderSel) {
             modalGenderSel.addEventListener('change', () => searchSharedVoices());
+        }
+
+        // Adicionar voz manualmente por ID
+        async function addVoiceById() {
+            if (!modalIdBtn || !modalIdInput) return;
+            const voiceId = (modalIdInput.value || '').trim();
+            const name    = modalIdName ? (modalIdName.value || '').trim() : '';
+            if (!voiceId) {
+                setIdFeedback('Cola um voice_id primeiro.', 'is-err');
+                modalIdInput.focus();
+                return;
+            }
+            const original = modalIdBtn.innerHTML;
+            modalIdBtn.disabled = true;
+            modalIdBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> A guardar…';
+            setIdFeedback('', '');
+            try {
+                const fd = new FormData();
+                fd.append('action', 'add_custom_voice');
+                fd.append('voice_id', voiceId);
+                if (name) fd.append('name', name);
+                if (modalLang) fd.append('voice_lang', modalLang);
+                const resp = await fetch('../api/tts_settings.php', { method: 'POST', body: fd });
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok || !data.ok) {
+                    throw new Error(data.error || ('HTTP ' + resp.status));
+                }
+                if (data.added === false) {
+                    setIdFeedback('Essa voz já estava guardada. Recarregue a página para a ver no seletor.', 'is-ok');
+                } else {
+                    setIdFeedback('Voz "' + (data.name || voiceId) + '" adicionada. Recarregue a página para a ver no seletor.', 'is-ok');
+                    modalIdInput.value = '';
+                    if (modalIdName) modalIdName.value = '';
+                }
+            } catch (err) {
+                console.error('Erro a adicionar voz por ID:', err);
+                setIdFeedback('Erro: ' + err.message, 'is-err');
+            } finally {
+                modalIdBtn.disabled = false;
+                modalIdBtn.innerHTML = original;
+            }
+        }
+
+        function setIdFeedback(msg, cls) {
+            if (!modalIdFeedback) return;
+            modalIdFeedback.className = 'add-voice-id-feedback' + (cls ? ' ' + cls : '');
+            modalIdFeedback.textContent = msg || '';
+        }
+
+        if (modalIdBtn)   modalIdBtn.addEventListener('click', addVoiceById);
+        if (modalIdInput) {
+            modalIdInput.addEventListener('keydown', e => {
+                if (e.key === 'Enter') { e.preventDefault(); addVoiceById(); }
+            });
         }
     }
 
