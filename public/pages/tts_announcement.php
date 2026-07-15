@@ -239,6 +239,11 @@ foreach ($languageDefs as $lang => $def) {
                     <input type="text" id="vehicle_model" name="vehicle_model" placeholder="Ex: Série 1"
                            value="<?= htmlspecialchars($lastData['vehicle_model'] ?? '') ?>">
                 </div>
+                <div style="flex: 1;">
+                    <label for="vehicle_color">Cor:</label>
+                    <input type="text" id="vehicle_color" name="vehicle_color" placeholder="Ex: vermelho"
+                           value="<?= htmlspecialchars($lastData['vehicle_color'] ?? '') ?>">
+                </div>
             </div>
             <label for="license_plate">Matrícula do Veículo:</label>
             <input type="text" id="license_plate" name="license_plate" placeholder="Ex: AA 25 ZB" 

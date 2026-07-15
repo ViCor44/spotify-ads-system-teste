@@ -236,24 +236,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
     // Config de línguas (sem voz: a ElevenLabs usa a mesma voz multilingue)
     $langConfig = [
         'pt' => [
-            'plate_text'  => "Atenção ao proprietário do veículo %s %s, com a matrícula %s. Repito, matrícula %s. Por favor, dirija-se à receção. Obrigado",
+            'plate_text'       => "Atenção ao proprietário do veículo %s %s, com a matrícula %s. Repito, matrícula %s. Por favor, dirija-se à receção. Obrigado",
+            'plate_text_color' => "Atenção ao proprietário do veículo %s %s de cor %s, com a matrícula %s. Repito, matrícula %s. Por favor, dirija-se à receção. Obrigado",
             'child_text'  => "Atenção, solicitamos a presença dos pais ou responsáveis da criança, %s, repito, %s, junto à receção. Obrigado",
             'person_text' => "Atenção, solicitamos a presença de %s, repito, %s, junto à receção. Obrigado",
             'phoneticMap' => [ 'A'=>'Á','B'=>'Bê','C'=>'Cê','D'=>'Dê','E'=>'É','F'=>'Efe','G'=>'Gê','H'=>'Agá','I'=>'I','J'=>'Jota','K'=>'Cápa','L'=>'Ele','M'=>'Eme','N'=>'Ene','O'=>'Ó','P'=>'Pê','Q'=>'Quê','R'=>'Erre','S'=>'Esse','T'=>'Tê','U'=>'U','V'=>'Vê','W'=>'Dáblio','X'=>'Xis','Y'=>'Ipsílon','Z'=>'Zê' ],
             'numberFormatter' => 'numeroParaExtensoPT'
         ],
         'en' => [
-            'plate_text'  => "Attention to the owner of the %s %s, with license plate %s. I repeat, %s. Please proceed to the reception. Thank you",
+            'plate_text'       => "Attention to the owner of the %s %s, with license plate %s. I repeat, %s. Please proceed to the reception. Thank you",
+            'plate_text_color' => "Attention to the owner of the %s %s, %s in color, with license plate %s. I repeat, %s. Please proceed to the reception. Thank you",
             'child_text'  => "Attention, we request the presence of the parents or guardians of the child %s. I repeat, %s. at the reception. Thank you",
             'person_text' => "Attention, we request the presence of %s. I repeat, %s. at the reception. Thank you",
         ],
         'es' => [
-            'plate_text'  => "Atención al propietario del vehículo %s %s, con matrícula %s. Repito, %s. Por favor, diríjase a recepción. Gracias",
+            'plate_text'       => "Atención al propietario del vehículo %s %s, con matrícula %s. Repito, %s. Por favor, diríjase a recepción. Gracias",
+            'plate_text_color' => "Atención al propietario del vehículo %s %s de color %s, con matrícula %s. Repito, %s. Por favor, diríjase a recepción. Gracias",
             'child_text'  => "Atención, solicitamos la presencia de los padres o responsables del niño %s. Repito, %s. en la recepción. Gracias",
             'person_text' => "Atención, solicitamos la presencia de %s. Repito, %s. en la recepción. Gracias",
         ],
         'fr' => [
-            'plate_text'  => "Attention au propriétaire du véhicule %s %s, avec la plaque d'immatriculation %s. Je répète, %s. Veuillez vous présenter à la réception. Merci",
+            'plate_text'       => "Attention au propriétaire du véhicule %s %s, avec la plaque d'immatriculation %s. Je répète, %s. Veuillez vous présenter à la réception. Merci",
+            'plate_text_color' => "Attention au propriétaire du véhicule %s %s de couleur %s, avec la plaque d'immatriculation %s. Je répète, %s. Veuillez vous présenter à la réception. Merci",
             'child_text'  => "Attention, nous demandons la présence des parents ou tuteurs de l'enfant %s. Je répète, %s. à la réception. Merci",
             'person_text' => "Attention, nous demandons la présence de %s. Je répète, %s. à la réception. Merci",
         ],
@@ -276,8 +280,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
             if ($announcementType === 'plate' && !empty($_POST['license_plate'])) {
                 $make  = trim($_POST['vehicle_make'] ?? '');
                 $model = trim($_POST['vehicle_model'] ?? '');
+                $color = trim($_POST['vehicle_color'] ?? '');
                 $plate = strtoupper(trim($_POST['license_plate']));
-                $textToLog = "Anúncio Matrícula: $make $model $plate";
+                $textToLog = "Anúncio Matrícula: $make $model"
+                    . ($color !== '' ? " ($color)" : '')
+                    . " $plate";
 
                 $plateCleaned = str_replace([' ', '-'], ' ', $plate);
                 $spelledParts = [];
@@ -293,7 +300,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
                     }
                 }
                 $plateSpelled = implode(', ', $spelledParts);
-                $textToSpeech = sprintf($cfg['plate_text'], $make, $model, $plateSpelled, $plateSpelled);
+
+                if ($color !== '' && !empty($cfg['plate_text_color'])) {
+                    // Traduz a cor (input em PT) para o idioma alvo.
+                    $target      = $translateTarget[$lang] ?? $lang;
+                    $colorLocal  = ($target === 'pt') ? $color : gtranslate_text($color, $target, 'pt');
+                    $textToSpeech = sprintf($cfg['plate_text_color'], $make, $model, $colorLocal, $plateSpelled, $plateSpelled);
+                } else {
+                    $textToSpeech = sprintf($cfg['plate_text'], $make, $model, $plateSpelled, $plateSpelled);
+                }
 
             } elseif ($announcementType === 'child' && !empty($_POST['child_name'])) {
                 $childName = trim($_POST['child_name']);
