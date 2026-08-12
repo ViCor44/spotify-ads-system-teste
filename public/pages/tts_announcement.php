@@ -231,29 +231,24 @@ foreach ($languageDefs as $lang => $def) {
             <div style="display: flex; gap: 15px; flex-wrap: wrap;">
                 <div style="flex: 1;">
                     <label for="vehicle_make">Marca:</label>
-                    <select id="vehicle_make" name="vehicle_make"
-                            data-selected="<?= htmlspecialchars($lastData['vehicle_make'] ?? '') ?>">
-                        <option value="">Selecione a marca</option>
-                    </select>
+                    <input type="text" id="vehicle_make" name="vehicle_make" list="vehicle-make-list"
+                           placeholder="Selecione ou escreva uma marca"
+                           value="<?= htmlspecialchars($lastData['vehicle_make'] ?? '') ?>" autocomplete="off">
+                    <datalist id="vehicle-make-list"></datalist>
                 </div>
                 <div style="flex: 1;">
                     <label for="vehicle_model">Modelo:</label>
-                    <select id="vehicle_model" name="vehicle_model"
-                            data-selected="<?= htmlspecialchars($lastData['vehicle_model'] ?? '') ?>" disabled>
-                        <option value="">Selecione primeiro a marca</option>
-                    </select>
+                    <input type="text" id="vehicle_model" name="vehicle_model" list="vehicle-model-list"
+                           placeholder="Selecione ou escreva um modelo"
+                           value="<?= htmlspecialchars($lastData['vehicle_model'] ?? '') ?>" autocomplete="off">
+                    <datalist id="vehicle-model-list"></datalist>
                 </div>
                 <div style="flex: 1;">
                     <label for="vehicle_color">Cor:</label>
-                    <?php $selectedColor = $lastData['vehicle_color'] ?? ''; ?>
-                    <select id="vehicle_color" name="vehicle_color">
-                        <option value="">Sem indicação de cor</option>
-                        <?php foreach (['Bege', 'Branco', 'Cinzento', 'Dourado', 'Laranja', 'Prateado', 'Preto', 'Roxo', 'Verde', 'Vermelho', 'Azul', 'Amarelo', 'Castanho', 'Bordô'] as $color): ?>
-                            <option value="<?= htmlspecialchars($color) ?>" <?= strcasecmp($selectedColor, $color) === 0 ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($color) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
+                    <input type="text" id="vehicle_color" name="vehicle_color" list="vehicle-color-list"
+                           placeholder="Selecione ou escreva uma cor"
+                           value="<?= htmlspecialchars($lastData['vehicle_color'] ?? '') ?>" autocomplete="off">
+                    <datalist id="vehicle-color-list"></datalist>
                 </div>
             </div>
             <label for="license_plate">Matrícula do Veículo:</label>

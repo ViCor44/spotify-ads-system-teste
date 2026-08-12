@@ -54,44 +54,103 @@ document.addEventListener('DOMContentLoaded', function () {
         'Volkswagen': ['Arteon', 'Beetle', 'Golf', 'ID.3', 'ID.4', 'ID.5', 'Passat', 'Polo', 'T-Cross', 'T-Roc', 'Tiguan', 'Touran', 'Up'],
         'Volvo': ['C30', 'C40', 'EX30', 'S40', 'S60', 'S90', 'V40', 'V60', 'V90', 'XC40', 'XC60', 'XC90']
     };
-    const makeSelect = document.getElementById('vehicle_make');
-    const modelSelectVehicle = document.getElementById('vehicle_model');
+    const makeInput = document.getElementById('vehicle_make');
+    const modelInputVehicle = document.getElementById('vehicle_model');
+    const colorInput = document.getElementById('vehicle_color');
+    const makeList = document.getElementById('vehicle-make-list');
+    const modelList = document.getElementById('vehicle-model-list');
+    const colorList = document.getElementById('vehicle-color-list');
+    const vehicleOptionsStorageKey = 'tts_vehicle_custom_options_v1';
+    const defaultVehicleColors = ['Amarelo', 'Azul', 'Bege', 'Bordô', 'Branco', 'Castanho', 'Cinzento', 'Dourado', 'Laranja', 'Prateado', 'Preto', 'Roxo', 'Verde', 'Vermelho'];
 
-    function addSelectOption(select, value, label) {
+    function addListOption(list, value) {
         const option = document.createElement('option');
         option.value = value;
-        option.textContent = label || value;
-        select.appendChild(option);
+        list.appendChild(option);
     }
 
-    function populateVehicleModels(selectedModel) {
-        if (!modelSelectVehicle) return;
-        const make = makeSelect ? makeSelect.value : '';
-        modelSelectVehicle.innerHTML = '';
-        if (!make) {
-            addSelectOption(modelSelectVehicle, '', 'Selecione primeiro a marca');
-            modelSelectVehicle.disabled = true;
-            return;
+    function readCustomVehicleOptions() {
+        try {
+            const stored = JSON.parse(localStorage.getItem(vehicleOptionsStorageKey));
+            return stored && typeof stored === 'object'
+                ? { makes: stored.makes || [], models: stored.models || {}, colors: stored.colors || [] }
+                : { makes: [], models: {}, colors: [] };
+        } catch (error) {
+            return { makes: [], models: {}, colors: [] };
         }
-        addSelectOption(modelSelectVehicle, '', 'Selecione o modelo');
-        (vehicleModels[make] || []).forEach(model => addSelectOption(modelSelectVehicle, model));
-        if (selectedModel && !Array.from(modelSelectVehicle.options).some(option => option.value === selectedModel)) {
-            addSelectOption(modelSelectVehicle, selectedModel);
-        }
-        modelSelectVehicle.value = selectedModel || '';
-        modelSelectVehicle.disabled = false;
     }
 
-    if (makeSelect && modelSelectVehicle) {
-        const selectedMake = makeSelect.dataset.selected || '';
-        const selectedModel = modelSelectVehicle.dataset.selected || '';
-        Object.keys(vehicleModels).sort((a, b) => a.localeCompare(b, 'pt')).forEach(make => addSelectOption(makeSelect, make));
-        if (selectedMake && !Array.from(makeSelect.options).some(option => option.value === selectedMake)) {
-            addSelectOption(makeSelect, selectedMake);
+    let customVehicleOptions = readCustomVehicleOptions();
+
+    function uniqueSorted(values) {
+        return Array.from(new Set(values.filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt', { sensitivity: 'base' }));
+    }
+
+    function renderVehicleMakes() {
+        if (!makeList) return;
+        makeList.innerHTML = '';
+        uniqueSorted(Object.keys(vehicleModels).concat(customVehicleOptions.makes)).forEach(make => addListOption(makeList, make));
+    }
+
+    function findKnownMake(value) {
+        const allMakes = Object.keys(vehicleModels).concat(customVehicleOptions.makes);
+        return allMakes.find(make => make.localeCompare(value.trim(), 'pt', { sensitivity: 'base' }) === 0) || value.trim();
+    }
+
+    function populateVehicleModels() {
+        if (!modelList) return;
+        modelList.innerHTML = '';
+        const make = makeInput ? findKnownMake(makeInput.value) : '';
+        uniqueSorted((vehicleModels[make] || []).concat(customVehicleOptions.models[make] || []))
+            .forEach(model => addListOption(modelList, model));
+    }
+
+    function renderVehicleColors() {
+        if (!colorList) return;
+        colorList.innerHTML = '';
+        uniqueSorted(defaultVehicleColors.concat(customVehicleOptions.colors)).forEach(color => addListOption(colorList, color));
+    }
+
+    function saveNewVehicleOptions() {
+        if (!makeInput || !modelInputVehicle || !colorInput) return;
+        const make = findKnownMake(makeInput.value);
+        const model = modelInputVehicle.value.trim();
+        const color = colorInput.value.trim();
+
+        if (make && !Object.keys(vehicleModels).some(item => item.localeCompare(make, 'pt', { sensitivity: 'base' }) === 0)) {
+            if (!customVehicleOptions.makes.some(item => item.localeCompare(make, 'pt', { sensitivity: 'base' }) === 0)) {
+                customVehicleOptions.makes.push(make);
+            }
         }
-        makeSelect.value = selectedMake;
-        populateVehicleModels(selectedModel);
-        makeSelect.addEventListener('change', () => populateVehicleModels(''));
+        if (make && model) {
+            customVehicleOptions.models[make] = customVehicleOptions.models[make] || [];
+            const standardModels = vehicleModels[make] || [];
+            const knownModels = standardModels.concat(customVehicleOptions.models[make]);
+            if (!knownModels.some(item => item.localeCompare(model, 'pt', { sensitivity: 'base' }) === 0)) {
+                customVehicleOptions.models[make].push(model);
+            }
+        }
+        if (color && !defaultVehicleColors.concat(customVehicleOptions.colors)
+            .some(item => item.localeCompare(color, 'pt', { sensitivity: 'base' }) === 0)) {
+            customVehicleOptions.colors.push(color);
+        }
+
+        try {
+            localStorage.setItem(vehicleOptionsStorageKey, JSON.stringify(customVehicleOptions));
+        } catch (error) {
+            console.warn('Não foi possível guardar as opções do veículo:', error);
+        }
+        renderVehicleMakes();
+        populateVehicleModels();
+        renderVehicleColors();
+    }
+
+    if (makeInput && modelInputVehicle && colorInput) {
+        renderVehicleMakes();
+        populateVehicleModels();
+        renderVehicleColors();
+        makeInput.addEventListener('input', populateVehicleModels);
+        [makeInput, modelInputVehicle, colorInput].forEach(input => input.addEventListener('change', saveNewVehicleOptions));
     }
 
     function toggleInputs() {
@@ -119,6 +178,7 @@ document.addEventListener('DOMContentLoaded', function () {
     toggleInputs();
 
     ttsForm.addEventListener('submit', function (e) {
+        saveNewVehicleOptions();
         const languages = ttsForm.querySelectorAll('input[name="languages[]"]:checked');
         if (languages.length === 0) {
             e.preventDefault();
