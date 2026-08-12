@@ -228,21 +228,32 @@ foreach ($languageDefs as $lang => $def) {
 
         <!-- Grupos de Campos -->
         <div id="plate-input-group" style="display: none;">
-            <div style="display: flex; gap: 15px;">
+            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
                 <div style="flex: 1;">
                     <label for="vehicle_make">Marca:</label>
-                    <input type="text" id="vehicle_make" name="vehicle_make" placeholder="Ex: BMW" 
-                           value="<?= htmlspecialchars($lastData['vehicle_make'] ?? '') ?>">
+                    <select id="vehicle_make" name="vehicle_make"
+                            data-selected="<?= htmlspecialchars($lastData['vehicle_make'] ?? '') ?>">
+                        <option value="">Selecione a marca</option>
+                    </select>
                 </div>
                 <div style="flex: 1;">
                     <label for="vehicle_model">Modelo:</label>
-                    <input type="text" id="vehicle_model" name="vehicle_model" placeholder="Ex: Série 1"
-                           value="<?= htmlspecialchars($lastData['vehicle_model'] ?? '') ?>">
+                    <select id="vehicle_model" name="vehicle_model"
+                            data-selected="<?= htmlspecialchars($lastData['vehicle_model'] ?? '') ?>" disabled>
+                        <option value="">Selecione primeiro a marca</option>
+                    </select>
                 </div>
                 <div style="flex: 1;">
                     <label for="vehicle_color">Cor:</label>
-                    <input type="text" id="vehicle_color" name="vehicle_color" placeholder="Ex: vermelho"
-                           value="<?= htmlspecialchars($lastData['vehicle_color'] ?? '') ?>">
+                    <?php $selectedColor = $lastData['vehicle_color'] ?? ''; ?>
+                    <select id="vehicle_color" name="vehicle_color">
+                        <option value="">Sem indicação de cor</option>
+                        <?php foreach (['Bege', 'Branco', 'Cinzento', 'Dourado', 'Laranja', 'Prateado', 'Preto', 'Roxo', 'Verde', 'Vermelho', 'Azul', 'Amarelo', 'Castanho', 'Bordô'] as $color): ?>
+                            <option value="<?= htmlspecialchars($color) ?>" <?= strcasecmp($selectedColor, $color) === 0 ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($color) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
             </div>
             <label for="license_plate">Matrícula do Veículo:</label>
@@ -470,11 +481,6 @@ foreach ($languageDefs as $lang => $def) {
     </div>
 </div>
 
-<?php
-    $ttsJsPath = __DIR__ . '/../assets/js/tts.js';
-    $ttsJsVer  = is_file($ttsJsPath) ? filemtime($ttsJsPath) : time();
-?>
-<script src="assets/js/tts.js?v=<?= $ttsJsVer ?>"></script>
 <style>
   /* Caixa de texto */
   #custom-input-group textarea {

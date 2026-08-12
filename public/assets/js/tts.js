@@ -16,6 +16,84 @@ document.addEventListener('DOMContentLoaded', function () {
     const personInput = document.getElementById('person_name');
     const customInput = document.getElementById('custom_text');
 
+    // Marcas e modelos mais comuns. O modelo é filtrado automaticamente pela marca.
+    const vehicleModels = {
+        'Alfa Romeo': ['147', '156', '159', 'Giulia', 'Giulietta', 'Stelvio', 'Tonale'],
+        'Audi': ['A1', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'Q2', 'Q3', 'Q4 e-tron', 'Q5', 'Q7', 'Q8', 'TT'],
+        'BMW': ['Série 1', 'Série 2', 'Série 3', 'Série 4', 'Série 5', 'Série 7', 'X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'i3', 'i4', 'iX'],
+        'Chevrolet': ['Aveo', 'Captiva', 'Cruze', 'Matiz', 'Spark', 'Trax'],
+        'Citroën': ['Berlingo', 'C1', 'C2', 'C3', 'C3 Aircross', 'C4', 'C4 Cactus', 'C4 Picasso', 'C5', 'C5 Aircross', 'Saxo', 'Xsara'],
+        'Cupra': ['Ateca', 'Born', 'Formentor', 'Leon', 'Tavascan', 'Terramar'],
+        'Dacia': ['Duster', 'Jogger', 'Logan', 'Sandero', 'Spring'],
+        'Fiat': ['500', '500X', 'Bravo', 'Doblo', 'Grande Punto', 'Panda', 'Punto', 'Tipo'],
+        'Ford': ['B-Max', 'C-Max', 'EcoSport', 'Fiesta', 'Focus', 'Galaxy', 'Ka', 'Kuga', 'Mondeo', 'Mustang', 'Puma', 'S-Max', 'Transit'],
+        'Honda': ['Accord', 'Civic', 'CR-V', 'e', 'FR-V', 'HR-V', 'Jazz'],
+        'Hyundai': ['Bayon', 'Getz', 'i10', 'i20', 'i30', 'Ioniq', 'Kauai', 'Santa Fe', 'Tucson'],
+        'Jaguar': ['E-Pace', 'F-Pace', 'F-Type', 'I-Pace', 'XE', 'XF', 'X-Type'],
+        'Jeep': ['Avenger', 'Cherokee', 'Compass', 'Grand Cherokee', 'Renegade', 'Wrangler'],
+        'Kia': ['Ceed', 'EV3', 'EV6', 'Niro', 'Picanto', 'Rio', 'Sorento', 'Sportage', 'Stonic', 'XCeed'],
+        'Land Rover': ['Defender', 'Discovery', 'Discovery Sport', 'Freelander', 'Range Rover', 'Range Rover Evoque', 'Range Rover Sport', 'Range Rover Velar'],
+        'Lexus': ['CT', 'ES', 'IS', 'LBX', 'NX', 'RX', 'UX'],
+        'Mazda': ['2', '3', '5', '6', 'CX-3', 'CX-30', 'CX-5', 'MX-5'],
+        'Mercedes-Benz': ['Classe A', 'Classe B', 'Classe C', 'Classe E', 'Classe S', 'CLA', 'CLS', 'EQA', 'EQB', 'GLA', 'GLB', 'GLC', 'GLE', 'Vito'],
+        'MG': ['MG3', 'MG4', 'MG5', 'HS', 'Marvel R', 'ZS'],
+        'MINI': ['Cabrio', 'Clubman', 'Cooper', 'Countryman', 'One'],
+        'Mitsubishi': ['ASX', 'Colt', 'L200', 'Lancer', 'Outlander', 'Space Star'],
+        'Nissan': ['Almera', 'Juke', 'Leaf', 'Micra', 'Note', 'Primera', 'Qashqai', 'X-Trail'],
+        'Opel': ['Adam', 'Astra', 'Corsa', 'Crossland', 'Grandland', 'Insignia', 'Meriva', 'Mokka', 'Vectra', 'Zafira'],
+        'Peugeot': ['106', '206', '207', '208', '2008', '306', '307', '308', '3008', '406', '407', '508', '5008', 'Partner', 'Rifter'],
+        'Polestar': ['Polestar 2', 'Polestar 3', 'Polestar 4'],
+        'Porsche': ['718', '911', 'Cayenne', 'Macan', 'Panamera', 'Taycan'],
+        'Renault': ['Austral', 'Captur', 'Clio', 'Espace', 'Kadjar', 'Kangoo', 'Laguna', 'Mégane', 'Scénic', 'Twingo', 'Zoe'],
+        'SEAT': ['Alhambra', 'Arona', 'Arosa', 'Ateca', 'Cordoba', 'Ibiza', 'Leon', 'Toledo'],
+        'Škoda': ['Enyaq', 'Fabia', 'Kamiq', 'Karoq', 'Kodiaq', 'Octavia', 'Scala', 'Superb'],
+        'Smart': ['Forfour', 'Fortwo', '#1', '#3'],
+        'Suzuki': ['Alto', 'Baleno', 'Ignis', 'Jimny', 'S-Cross', 'Swift', 'Vitara'],
+        'Tesla': ['Model 3', 'Model S', 'Model X', 'Model Y'],
+        'Toyota': ['Auris', 'Aygo', 'C-HR', 'Corolla', 'Hilux', 'Land Cruiser', 'Prius', 'RAV4', 'Yaris', 'Yaris Cross'],
+        'Volkswagen': ['Arteon', 'Beetle', 'Golf', 'ID.3', 'ID.4', 'ID.5', 'Passat', 'Polo', 'T-Cross', 'T-Roc', 'Tiguan', 'Touran', 'Up'],
+        'Volvo': ['C30', 'C40', 'EX30', 'S40', 'S60', 'S90', 'V40', 'V60', 'V90', 'XC40', 'XC60', 'XC90']
+    };
+    const makeSelect = document.getElementById('vehicle_make');
+    const modelSelectVehicle = document.getElementById('vehicle_model');
+
+    function addSelectOption(select, value, label) {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = label || value;
+        select.appendChild(option);
+    }
+
+    function populateVehicleModels(selectedModel) {
+        if (!modelSelectVehicle) return;
+        const make = makeSelect ? makeSelect.value : '';
+        modelSelectVehicle.innerHTML = '';
+        if (!make) {
+            addSelectOption(modelSelectVehicle, '', 'Selecione primeiro a marca');
+            modelSelectVehicle.disabled = true;
+            return;
+        }
+        addSelectOption(modelSelectVehicle, '', 'Selecione o modelo');
+        (vehicleModels[make] || []).forEach(model => addSelectOption(modelSelectVehicle, model));
+        if (selectedModel && !Array.from(modelSelectVehicle.options).some(option => option.value === selectedModel)) {
+            addSelectOption(modelSelectVehicle, selectedModel);
+        }
+        modelSelectVehicle.value = selectedModel || '';
+        modelSelectVehicle.disabled = false;
+    }
+
+    if (makeSelect && modelSelectVehicle) {
+        const selectedMake = makeSelect.dataset.selected || '';
+        const selectedModel = modelSelectVehicle.dataset.selected || '';
+        Object.keys(vehicleModels).sort((a, b) => a.localeCompare(b, 'pt')).forEach(make => addSelectOption(makeSelect, make));
+        if (selectedMake && !Array.from(makeSelect.options).some(option => option.value === selectedMake)) {
+            addSelectOption(makeSelect, selectedMake);
+        }
+        makeSelect.value = selectedMake;
+        populateVehicleModels(selectedModel);
+        makeSelect.addEventListener('change', () => populateVehicleModels(''));
+    }
+
     function toggleInputs() {
         const selectedType = announcementTypeSelect.value;
 
