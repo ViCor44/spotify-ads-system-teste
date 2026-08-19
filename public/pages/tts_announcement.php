@@ -27,6 +27,7 @@ try {
 // Voz predefinida: preferência do utilizador (storage/tts_settings.json) > constante em config/database.php
 $defaultVoiceId  = tts_get_default_voice_id();
 $selectedVoiceId = $lastData['voice_id'] ?? '';
+$favoriteVoiceIds = tts_get_favorite_voice_ids();
 
 /**
  * Tenta identificar o sotaque/idioma de uma voz a partir dos labels da ElevenLabs.
@@ -132,7 +133,10 @@ $accentOrder = [
     'pl-pl' => 12,
     'other' => 99,
 ];
-usort($ttsVoices, function ($a, $b) use ($accentOrder) {
+usort($ttsVoices, function ($a, $b) use ($accentOrder, $favoriteVoiceIds) {
+    $fa = in_array($a['voice_id'], $favoriteVoiceIds, true) ? 0 : 1;
+    $fb = in_array($b['voice_id'], $favoriteVoiceIds, true) ? 0 : 1;
+    if ($fa !== $fb) return $fa <=> $fb;
     $oa = $accentOrder[$a['_accent']['key']] ?? 99;
     $ob = $accentOrder[$b['_accent']['key']] ?? 99;
     if ($oa !== $ob) return $oa <=> $ob;
@@ -382,18 +386,27 @@ foreach ($languageDefs as $lang => $def) {
                                         if (!empty($v['labels']['description'])) $bits[] = $v['labels']['description'];
                                         $extra = $bits ? ' — ' . implode(' · ', $bits) : '';
                                         $isDefault = ($v['voice_id'] === $st['default_voice']);
+                                        $isFavorite = in_array($v['voice_id'], $favoriteVoiceIds, true);
                                     ?>
                                         <option value="<?= htmlspecialchars($v['voice_id']) ?>"
                                             data-preview="<?= htmlspecialchars($v['preview_url']) ?>"
                                             data-name="<?= htmlspecialchars($v['name']) ?>"
                                             data-extra="<?= htmlspecialchars($extra) ?>"
                                             data-accent="<?= htmlspecialchars($accentLabel) ?>"
+                                            data-favorite="<?= $isFavorite ? '1' : '0' ?>"
                                             <?= ($v['voice_id'] === $st['selected']) ? 'selected' : '' ?>>
-                                            <?= $isDefault ? '★ ' : '' ?><?= htmlspecialchars($v['name'] . $extra) ?><?= $isDefault ? ' (predefinida)' : '' ?>
+                                            <?= $isFavorite ? '♥ ' : '' ?><?= $isDefault ? '★ ' : '' ?><?= htmlspecialchars($v['name'] . $extra) ?><?= $isDefault ? ' (predefinida)' : '' ?>
                                         </option>
                                     <?php endforeach; ?>
                                 <?php endforeach; ?>
                             </select>
+
+                            <button type="button" class="favorite-btn"
+                                    data-lang="<?= htmlspecialchars($lang) ?>"
+                                    title="Adicionar ou remover a voz selecionada das preferidas"
+                                    aria-label="Alternar voz preferida">
+                                <i class="fa-regular fa-heart"></i>
+                            </button>
 
                             <button type="button" class="default-btn set-default-btn"
                                     data-lang="<?= htmlspecialchars($lang) ?>"
@@ -658,7 +671,7 @@ foreach ($languageDefs as $lang => $def) {
   }
   .voice-lang-controls {
     display: grid;
-    grid-template-columns: minmax(220px, 1fr) auto auto;
+    grid-template-columns: minmax(220px, 1fr) auto auto auto;
     gap: 8px;
     flex: 1;
     align-items: stretch;
@@ -670,6 +683,18 @@ foreach ($languageDefs as $lang => $def) {
     padding: 0 12px;
     font-size: 0.85rem;
   }
+  .favorite-btn {
+    min-width: 42px;
+    padding: 0 11px;
+    border: 1px solid #f9a8d4;
+    border-radius: 8px;
+    background: #fff;
+    color: #be185d;
+    cursor: pointer;
+  }
+  .favorite-btn:hover,
+  .favorite-btn.is-current { background: #fdf2f8; border-color: #ec4899; }
+  .favorite-btn:disabled { opacity: .6; cursor: not-allowed; }
   .voice-lang-empty {
     display: flex;
     align-items: center;

@@ -73,6 +73,24 @@ if (!function_exists('tts_settings_path')) {
         return $out;
     }
 
+    /** IDs das vozes marcadas como preferidas. */
+    function tts_get_favorite_voice_ids(): array {
+        $s = tts_settings_read();
+        $ids = is_array($s['favorite_voice_ids'] ?? null) ? $s['favorite_voice_ids'] : [];
+        return array_values(array_unique(array_filter(array_map('strval', $ids))));
+    }
+
+    /** Adiciona/remove uma voz da lista de preferidas. */
+    function tts_set_favorite_voice(string $voiceId, bool $favorite): bool {
+        $ids = tts_get_favorite_voice_ids();
+        if ($favorite && !in_array($voiceId, $ids, true)) {
+            $ids[] = $voiceId;
+        } elseif (!$favorite) {
+            $ids = array_values(array_filter($ids, fn($id) => $id !== $voiceId));
+        }
+        return tts_settings_write(['favorite_voice_ids' => $ids]);
+    }
+
     /** Devolve voice_settings (stability, similarity_boost, style, use_speaker_boost). */
     function tts_get_voice_settings(): array {
         $s = tts_settings_read();
@@ -216,6 +234,20 @@ if (PHP_SAPI !== 'cli' && basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basena
                 exit;
             }
 
+            if ($action === 'set_favorite_voice') {
+                if ($voiceId === '') throw new Exception('voice_id em falta.');
+                $favorite = filter_var($_POST['favorite'] ?? false, FILTER_VALIDATE_BOOLEAN);
+                tts_set_favorite_voice($voiceId, $favorite);
+                echo json_encode([
+                    'ok' => true,
+                    'type' => 'favorite_voice',
+                    'voice_id' => $voiceId,
+                    'favorite' => $favorite,
+                    'favorite_voice_ids' => tts_get_favorite_voice_ids(),
+                ]);
+                exit;
+            }
+
             // --- Ação: adicionar voz manual por ID ---
             if ($action === 'add_custom_voice') {
                 $name = trim((string) ($_POST['name'] ?? ''));
@@ -309,6 +341,7 @@ if (PHP_SAPI !== 'cli' && basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basena
             'model_id'              => tts_get_model_id(),
             'supported_models'      => tts_supported_models(),
             'custom_voices'         => tts_get_custom_voices(),
+            'favorite_voice_ids'    => tts_get_favorite_voice_ids(),
             'settings'              => tts_settings_read(),
         ], JSON_UNESCAPED_UNICODE);
 

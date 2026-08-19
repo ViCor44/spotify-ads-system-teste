@@ -311,9 +311,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 const m = opt.textContent.match(/—\s*([^()]+?)(?:\s*\(predefinida\))?\s*$/);
                 extra = m ? ' — ' + m[1].trim() : '';
             }
+            const heart  = opt.getAttribute('data-favorite') === '1' ? '♥ ' : '';
             const star   = (opt.value === newDefaultVoiceId) ? '★ ' : '';
             const suffix = (opt.value === newDefaultVoiceId) ? ' (predefinida)' : '';
-            opt.textContent = star + name + extra + suffix;
+            opt.textContent = heart + star + name + extra + suffix;
         });
     }
 
@@ -353,6 +354,52 @@ document.addEventListener('DOMContentLoaded', function () {
             select.addEventListener('change', () => refreshDefaultBtnState(btn));
         }
         refreshDefaultBtnState(btn);
+    });
+
+    function refreshFavoriteBtnState(btn) {
+        const select = getSelectForLang(btn.getAttribute('data-lang'));
+        const option = getSelectedOption(select);
+        const favorite = option && option.getAttribute('data-favorite') === '1';
+        btn.classList.toggle('is-current', !!favorite);
+        btn.innerHTML = favorite
+            ? '<i class="fa-solid fa-heart"></i>'
+            : '<i class="fa-regular fa-heart"></i>';
+        btn.title = favorite ? 'Remover das vozes preferidas' : 'Adicionar às vozes preferidas';
+    }
+
+    document.querySelectorAll('.favorite-btn').forEach(btn => {
+        const lang = btn.getAttribute('data-lang');
+        const select = getSelectForLang(lang);
+        btn.addEventListener('click', async () => {
+            const option = getSelectedOption(select);
+            if (!option) return;
+            const favorite = option.getAttribute('data-favorite') !== '1';
+            btn.disabled = true;
+            try {
+                const fd = new FormData();
+                fd.append('action', 'set_favorite_voice');
+                fd.append('voice_id', option.value);
+                fd.append('favorite', favorite ? '1' : '0');
+                const resp = await fetch('../api/tts_settings.php', { method: 'POST', body: fd });
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok || !data.ok) throw new Error(data.error || ('HTTP ' + resp.status));
+
+                document.querySelectorAll('.voice-select option[value="' + CSS.escape(option.value) + '"]').forEach(opt => {
+                    opt.setAttribute('data-favorite', favorite ? '1' : '0');
+                });
+                document.querySelectorAll('.voice-select-lang').forEach(sel => {
+                    const defaultBtn = document.querySelector('.set-default-btn[data-lang="' + sel.dataset.lang + '"]');
+                    updateOptionLabels(sel.dataset.lang, defaultBtn ? defaultBtn.getAttribute('data-current') : '');
+                });
+                document.querySelectorAll('.favorite-btn').forEach(refreshFavoriteBtnState);
+            } catch (err) {
+                alert('Não foi possível atualizar as vozes preferidas: ' + err.message);
+            } finally {
+                btn.disabled = false;
+            }
+        });
+        if (select) select.addEventListener('change', () => refreshFavoriteBtnState(btn));
+        refreshFavoriteBtnState(btn);
     });
 
     // ---- Adicionar voz à conta ElevenLabs (modal global) ----
