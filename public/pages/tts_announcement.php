@@ -259,6 +259,11 @@ foreach ($languageDefs as $lang => $def) {
             <input type="text" id="license_plate" name="license_plate" placeholder="Ex: AA 25 ZB" 
                    value="<?= htmlspecialchars($lastData['license_plate'] ?? '') ?>"
                    style="text-transform:uppercase; font-size: 1.2em; text-align: center; letter-spacing: 2px;">
+            <div class="vehicle-fields-actions">
+                <button type="button" id="clear-vehicle-fields" class="clear-fields-btn">
+                    <i class="fa-solid fa-eraser" aria-hidden="true"></i> Limpar campos
+                </button>
+            </div>
         </div>
 
         <div id="child-input-group" style="display: none;">
@@ -490,6 +495,31 @@ foreach ($languageDefs as $lang => $def) {
 </div>
 
 <style>
+  .vehicle-fields-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin: -10px 0 18px;
+  }
+
+  form .clear-fields-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 16px;
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    background: #fff;
+    color: #475569;
+    font-size: .9rem;
+    font-weight: 600;
+  }
+
+  form .clear-fields-btn:hover {
+    border-color: #94a3b8;
+    background: #f8fafc;
+    color: #1e293b;
+  }
+
   /* Caixa de texto */
   #custom-input-group textarea {
     width: 100%;

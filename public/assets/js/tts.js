@@ -57,6 +57,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const makeInput = document.getElementById('vehicle_make');
     const modelInputVehicle = document.getElementById('vehicle_model');
     const colorInput = document.getElementById('vehicle_color');
+    const clearVehicleFieldsBtn = document.getElementById('clear-vehicle-fields');
     const makeList = document.getElementById('vehicle-make-list');
     const modelList = document.getElementById('vehicle-model-list');
     const colorList = document.getElementById('vehicle-color-list');
@@ -151,6 +152,16 @@ document.addEventListener('DOMContentLoaded', function () {
         renderVehicleColors();
         makeInput.addEventListener('input', populateVehicleModels);
         [makeInput, modelInputVehicle, colorInput].forEach(input => input.addEventListener('change', saveNewVehicleOptions));
+    }
+
+    if (clearVehicleFieldsBtn) {
+        clearVehicleFieldsBtn.addEventListener('click', function () {
+            [makeInput, modelInputVehicle, colorInput, plateInput].forEach(input => {
+                if (input) input.value = '';
+            });
+            populateVehicleModels();
+            if (makeInput) makeInput.focus();
+        });
     }
 
     function toggleInputs() {
