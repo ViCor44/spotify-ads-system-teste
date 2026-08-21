@@ -339,9 +339,14 @@ foreach ($languageDefs as $lang => $def) {
         <input type="checkbox" id="voice-boost" name="voice_settings[use_speaker_boost]" value="1" <?= $ttsVoiceSettings['use_speaker_boost'] ? 'checked' : '' ?>>
         <label for="voice-boost">Amplificador do Orador (melhora a clareza)</label>
       </div>
+      <div class="voice-setting-row">
+        <label for="tts-gain">Volume do anúncio:</label>
+        <input type="range" id="tts-gain" name="tts_gain" min="100" max="200" step="5" value="<?= max(100, min(200, (int)($lastData['tts_gain'] ?? 120))) ?>">
+        <span class="voice-setting-value" data-target="tts-gain"><?= max(100, min(200, (int)($lastData['tts_gain'] ?? 120))) ?>%</span>
+      </div>
     </div>
     <p class="gong-hint" style="margin-bottom: 20px;">
-      <strong>Dicas:</strong> Estabilidade (0-100) define a variação da voz; inferior = mais expressivo, superior = mais consistente. Similaridade (0-100) = quão próximo da voz original. Estilo (0-100) = intensidade do caractér. Amplificador = melhora a presença da voz.
+      <strong>Dicas:</strong> Estabilidade (0-100) define a variação da voz; inferior = mais expressivo, superior = mais consistente. Similaridade (0-100) = quão próximo da voz original. Estilo (0-100) = intensidade do carácter. Amplificador = melhora a presença da voz. O volume é limitado automaticamente ao pico máximo sem clipping.
     </p>
 
 

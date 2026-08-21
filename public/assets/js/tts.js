@@ -248,6 +248,14 @@ document.addEventListener('DOMContentLoaded', function () {
         voiceBoostCheckbox.addEventListener('change', saveVoiceSettings);
     }
 
+    const ttsGainSlider = document.getElementById('tts-gain');
+    if (ttsGainSlider) {
+        const ttsGainValue = ttsForm.querySelector('[data-target="tts-gain"]');
+        ttsGainSlider.addEventListener('input', () => {
+            if (ttsGainValue) ttsGainValue.textContent = ttsGainSlider.value + '%';
+        });
+    }
+
     // =================== Seletor de Modelo (v2 / v3 / turbo / flash) ===================
     const modelSelect = document.getElementById('voice-model');
     const modelStatus = document.getElementById('voice-model-status');

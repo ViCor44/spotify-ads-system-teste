@@ -88,17 +88,26 @@ function pcmSilence(float $seconds, int $sampleRate = 22050, int $channels = 1, 
     return str_repeat("\x00", $numFrames * $channels * $bytesPerSample);
 }
 
-/** Aumenta o ganho de PCM 16-bit com limitação para evitar overflow digital. */
+/** Aumenta o ganho de PCM 16-bit sem ultrapassar o pico digital. */
 function pcmApplyGain16(string $pcm, float $gain): string {
     if ($gain <= 0 || abs($gain - 1.0) < 0.001 || $pcm === '') return $pcm;
 
     $length = strlen($pcm) - (strlen($pcm) % 2);
+    $peak = 0;
+    for ($offset = 0; $offset < $length; $offset += 2) {
+        $sample = ord($pcm[$offset]) | (ord($pcm[$offset + 1]) << 8);
+        if ($sample >= 0x8000) $sample -= 0x10000;
+        $peak = max($peak, abs($sample));
+    }
+
+    if ($peak > 0) $gain = min($gain, 32767 / $peak);
+    if ($gain <= 1.0) return $pcm;
+
     for ($offset = 0; $offset < $length; $offset += 2) {
         $sample = ord($pcm[$offset]) | (ord($pcm[$offset + 1]) << 8);
         if ($sample >= 0x8000) $sample -= 0x10000;
 
         $sample = (int) round($sample * $gain);
-        $sample = max(-32768, min(32767, $sample));
         if ($sample < 0) $sample += 0x10000;
 
         $pcm[$offset]     = chr($sample & 0xff);
@@ -369,7 +378,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
         $CHANNELS    = 1;
         $BITS        = 16;
         $SILENCE_SEC = 0.40; // pausa entre idiomas
-        $TTS_GAIN    = 1.20; // ligeiro aumento de volume (+20%)
+        $ttsGainPercent = max(100, min(200, (int)($_POST['tts_gain'] ?? 120)));
+        $TTS_GAIN       = $ttsGainPercent / 100;
 
         $cacheKeyBase = [
             'provider'         => 'elevenlabs',
