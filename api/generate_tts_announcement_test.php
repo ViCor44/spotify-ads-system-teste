@@ -88,6 +88,26 @@ function pcmSilence(float $seconds, int $sampleRate = 22050, int $channels = 1, 
     return str_repeat("\x00", $numFrames * $channels * $bytesPerSample);
 }
 
+/** Aumenta o ganho de PCM 16-bit com limitação para evitar overflow digital. */
+function pcmApplyGain16(string $pcm, float $gain): string {
+    if ($gain <= 0 || abs($gain - 1.0) < 0.001 || $pcm === '') return $pcm;
+
+    $length = strlen($pcm) - (strlen($pcm) % 2);
+    for ($offset = 0; $offset < $length; $offset += 2) {
+        $sample = ord($pcm[$offset]) | (ord($pcm[$offset + 1]) << 8);
+        if ($sample >= 0x8000) $sample -= 0x10000;
+
+        $sample = (int) round($sample * $gain);
+        $sample = max(-32768, min(32767, $sample));
+        if ($sample < 0) $sample += 0x10000;
+
+        $pcm[$offset]     = chr($sample & 0xff);
+        $pcm[$offset + 1] = chr(($sample >> 8) & 0xff);
+    }
+
+    return $pcm;
+}
+
 /** Constrói um WAV (RIFF/PCM) a partir de PCM bruto + parâmetros. */
 function wavBuildFromPcm(string $pcm, int $channels, int $sampleRate, int $bits): string {
     $byteRate   = (int)($sampleRate * $channels * ($bits / 8));
@@ -349,6 +369,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
         $CHANNELS    = 1;
         $BITS        = 16;
         $SILENCE_SEC = 0.40; // pausa entre idiomas
+        $TTS_GAIN    = 1.20; // ligeiro aumento de volume (+20%)
 
         $cacheKeyBase = [
             'provider'         => 'elevenlabs',
@@ -363,6 +384,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
                 'ch'      => $CHANNELS,
                 'bits'    => $BITS,
                 'silence' => $SILENCE_SEC,
+                'gain'    => $TTS_GAIN,
             ],
         ];
         $cacheKey = hash('sha256', json_encode($cacheKeyBase, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
@@ -392,7 +414,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
                 }
             }
 
-            $pcmAll   = implode('', $pcmParts);
+            $pcmAll   = pcmApplyGain16(implode('', $pcmParts), $TTS_GAIN);
             $wavFinal = wavBuildFromPcm($pcmAll, $CHANNELS, $SAMPLE_RATE, $BITS);
 
             if (file_put_contents($filePath, $wavFinal) === false) {
