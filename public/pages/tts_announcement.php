@@ -335,6 +335,11 @@ foreach ($languageDefs as $lang => $def) {
         <input type="range" id="voice-style" class="voice-setting-slider" name="voice_settings[style]" min="0" max="100" value="<?= (int)($ttsVoiceSettings['style'] * 100) ?>" data-setting="style">
         <span class="voice-setting-value" data-target="voice-style"><?= (int)($ttsVoiceSettings['style'] * 100) ?>%</span>
       </div>
+      <div class="voice-setting-row">
+        <label for="voice-speed">Velocidade:</label>
+        <input type="range" id="voice-speed" class="voice-setting-slider" name="voice_settings[speed]" min="70" max="120" value="<?= (int) round($ttsVoiceSettings['speed'] * 100) ?>" data-setting="speed">
+        <span class="voice-setting-value" data-target="voice-speed"><?= (int) round($ttsVoiceSettings['speed'] * 100) ?>%</span>
+      </div>
       <div class="voice-setting-row voice-setting-checkbox">
         <input type="checkbox" id="voice-boost" name="voice_settings[use_speaker_boost]" value="1" <?= $ttsVoiceSettings['use_speaker_boost'] ? 'checked' : '' ?>>
         <label for="voice-boost">Amplificador do Orador (melhora a clareza)</label>
@@ -346,7 +351,7 @@ foreach ($languageDefs as $lang => $def) {
       </div>
     </div>
     <p class="gong-hint" style="margin-bottom: 20px;">
-      <strong>Dicas:</strong> Estabilidade (0-100) define a variação da voz; inferior = mais expressivo, superior = mais consistente. Similaridade (0-100) = quão próximo da voz original. Estilo (0-100) = intensidade do carácter. Amplificador = melhora a presença da voz. O volume é limitado automaticamente ao pico máximo sem clipping.
+      <strong>Dicas:</strong> Estabilidade (0-100) define a variação da voz; inferior = mais expressivo, superior = mais consistente. Similaridade (0-100) = quão próximo da voz original. Estilo (0-100) = intensidade do carácter. Velocidade (70-120): abaixo de 100 torna a fala mais lenta. Amplificador = melhora a presença da voz. O volume é limitado automaticamente ao pico máximo sem clipping.
     </p>
 
 

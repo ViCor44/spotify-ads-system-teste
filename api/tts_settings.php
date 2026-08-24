@@ -91,26 +91,32 @@ if (!function_exists('tts_settings_path')) {
         return tts_settings_write(['favorite_voice_ids' => $ids]);
     }
 
-    /** Devolve voice_settings (stability, similarity_boost, style, use_speaker_boost). */
+    /** Devolve voice_settings, incluindo a velocidade suportada pela ElevenLabs. */
     function tts_get_voice_settings(): array {
         $s = tts_settings_read();
-        return isset($s['voice_settings']) && is_array($s['voice_settings'])
+        $defaults = [
+            'stability'         => 0.45,
+            'similarity_boost'  => 0.85,
+            'style'             => 0.20,
+            'use_speaker_boost' => true,
+            'speed'             => 1.0,
+        ];
+        $stored = isset($s['voice_settings']) && is_array($s['voice_settings'])
             ? $s['voice_settings']
-            : [
-                'stability'         => 0.45,
-                'similarity_boost'  => 0.85,
-                'style'             => 0.20,
-                'use_speaker_boost' => true,
-            ];
+            : [];
+        $settings = array_merge($defaults, $stored);
+        $settings['speed'] = max(0.7, min(1.2, (float) $settings['speed']));
+        return $settings;
     }
 
     /** Escreve voice_settings e guarda no storage. */
-    function tts_set_voice_settings(float $stability = 0.45, float $similarity_boost = 0.85, float $style = 0.20, bool $use_speaker_boost = true): bool {
+    function tts_set_voice_settings(float $stability = 0.45, float $similarity_boost = 0.85, float $style = 0.20, bool $use_speaker_boost = true, float $speed = 1.0): bool {
         $settings = [
             'stability'         => max(0.0, min(1.0, (float) $stability)),
             'similarity_boost'  => max(0.0, min(1.0, (float) $similarity_boost)),
             'style'             => max(0.0, min(1.0, (float) $style)),
             'use_speaker_boost' => (bool) $use_speaker_boost,
+            'speed'             => max(0.7, min(1.2, (float) $speed)),
         ];
         return tts_settings_write(['voice_settings' => $settings]);
     }
@@ -280,14 +286,15 @@ if (PHP_SAPI !== 'cli' && basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basena
                 exit;
             }
 
-            // Novo: guardar voice_settings (stability, similarity_boost, style, use_speaker_boost)
-            if (!empty($_POST['stability']) || !empty($_POST['similarity_boost']) || !empty($_POST['style']) || isset($_POST['use_speaker_boost'])) {
+            // Guardar os ajustes de voz enviados pela página TTS.
+            if (isset($_POST['stability'], $_POST['similarity_boost'], $_POST['style'])) {
                 $stability         = (float) ($_POST['stability'] ?? 0.45);
                 $similarity_boost  = (float) ($_POST['similarity_boost'] ?? 0.85);
                 $style             = (float) ($_POST['style'] ?? 0.20);
                 $use_speaker_boost = (bool) ($_POST['use_speaker_boost'] ?? true);
+                $speed             = (float) ($_POST['speed'] ?? 1.0);
 
-                if (tts_set_voice_settings($stability, $similarity_boost, $style, $use_speaker_boost)) {
+                if (tts_set_voice_settings($stability, $similarity_boost, $style, $use_speaker_boost, $speed)) {
                     echo json_encode([
                         'ok'                => true,
                         'type'              => 'voice_settings',

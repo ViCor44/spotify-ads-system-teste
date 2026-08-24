@@ -218,7 +218,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const fd = new FormData();
         voiceSettingSliders.forEach(slider => {
             const setting = slider.getAttribute('data-setting');
-            const value = Math.max(0, Math.min(100, parseInt(slider.value))) / 100;
+            const rawValue = parseInt(slider.value, 10);
+            const value = setting === 'speed'
+                ? Math.max(70, Math.min(120, rawValue)) / 100
+                : Math.max(0, Math.min(100, rawValue)) / 100;
             fd.append(setting, value);
         });
         if (voiceBoostCheckbox) {

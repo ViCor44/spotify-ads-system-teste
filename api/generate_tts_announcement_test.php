@@ -379,6 +379,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
         // =================== Cache ===================
         require_once __DIR__ . '/tts_settings.php';
         $modelId = tts_get_model_id();
+        if (isset($_POST['voice_settings']) && is_array($_POST['voice_settings'])) {
+            $postedVoiceSettings = $_POST['voice_settings'];
+            tts_set_voice_settings(
+                (float) ($postedVoiceSettings['stability'] ?? 0.45),
+                (float) ($postedVoiceSettings['similarity_boost'] ?? 0.85),
+                (float) ($postedVoiceSettings['style'] ?? 0.20),
+                isset($postedVoiceSettings['use_speaker_boost']),
+                (float) ($postedVoiceSettings['speed'] ?? 1.0)
+            );
+        }
+        $voiceSettings = tts_get_voice_settings();
 
         // Parâmetros de áudio uniformes (para concatenar PCM sem clicks)
         $SAMPLE_RATE = 22050;
@@ -396,6 +407,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
             'segments'         => array_map(function($s){
                 return ['lang' => $s['lang'], 'text' => $s['text'], 'voice_id' => $s['voice_id']];
             }, $segments),
+            'voice_settings'   => $voiceSettings,
             'audio' => [
                 'sr'      => $SAMPLE_RATE,
                 'ch'      => $CHANNELS,
@@ -425,7 +437,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
             $fallbackVoice = defined('ELEVENLABS_VOICE_ID') ? ELEVENLABS_VOICE_ID : '';
             foreach ($segments as $i => $s) {
                 $segVoice = !empty($s['voice_id']) ? $s['voice_id'] : $fallbackVoice;
-                $pcmParts[] = elevenlabs_synthesize_pcm($s['text'], $SAMPLE_RATE, $segVoice, $modelId);
+                $pcmParts[] = elevenlabs_synthesize_pcm($s['text'], $SAMPLE_RATE, $segVoice, $modelId, $voiceSettings);
                 if ($i !== $lastIdx && $SILENCE_SEC > 0) {
                     $pcmParts[] = pcmSilence($SILENCE_SEC, $SAMPLE_RATE, $CHANNELS, $BITS);
                 }
