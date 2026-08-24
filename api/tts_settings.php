@@ -95,11 +95,11 @@ if (!function_exists('tts_settings_path')) {
     function tts_get_voice_settings(): array {
         $s = tts_settings_read();
         $defaults = [
-            'stability'         => 0.45,
-            'similarity_boost'  => 0.85,
-            'style'             => 0.20,
+            'stability'         => 0.50,
+            'similarity_boost'  => 0.75,
+            'style'             => 0.00,
             'use_speaker_boost' => true,
-            'speed'             => 1.0,
+            'speed'             => 0.85,
         ];
         $stored = isset($s['voice_settings']) && is_array($s['voice_settings'])
             ? $s['voice_settings']
@@ -110,7 +110,7 @@ if (!function_exists('tts_settings_path')) {
     }
 
     /** Escreve voice_settings e guarda no storage. */
-    function tts_set_voice_settings(float $stability = 0.45, float $similarity_boost = 0.85, float $style = 0.20, bool $use_speaker_boost = true, float $speed = 1.0): bool {
+    function tts_set_voice_settings(float $stability = 0.50, float $similarity_boost = 0.75, float $style = 0.00, bool $use_speaker_boost = true, float $speed = 0.85): bool {
         $settings = [
             'stability'         => max(0.0, min(1.0, (float) $stability)),
             'similarity_boost'  => max(0.0, min(1.0, (float) $similarity_boost)),
@@ -288,11 +288,11 @@ if (PHP_SAPI !== 'cli' && basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basena
 
             // Guardar os ajustes de voz enviados pela página TTS.
             if (isset($_POST['stability'], $_POST['similarity_boost'], $_POST['style'])) {
-                $stability         = (float) ($_POST['stability'] ?? 0.45);
-                $similarity_boost  = (float) ($_POST['similarity_boost'] ?? 0.85);
-                $style             = (float) ($_POST['style'] ?? 0.20);
+                $stability         = (float) ($_POST['stability'] ?? 0.50);
+                $similarity_boost  = (float) ($_POST['similarity_boost'] ?? 0.75);
+                $style             = (float) ($_POST['style'] ?? 0.00);
                 $use_speaker_boost = (bool) ($_POST['use_speaker_boost'] ?? true);
-                $speed             = (float) ($_POST['speed'] ?? 1.0);
+                $speed             = (float) ($_POST['speed'] ?? 0.85);
 
                 if (tts_set_voice_settings($stability, $similarity_boost, $style, $use_speaker_boost, $speed)) {
                     echo json_encode([

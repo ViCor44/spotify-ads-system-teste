@@ -382,11 +382,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
         if (isset($_POST['voice_settings']) && is_array($_POST['voice_settings'])) {
             $postedVoiceSettings = $_POST['voice_settings'];
             tts_set_voice_settings(
-                (float) ($postedVoiceSettings['stability'] ?? 0.45),
-                (float) ($postedVoiceSettings['similarity_boost'] ?? 0.85),
-                (float) ($postedVoiceSettings['style'] ?? 0.20),
+                (float) ($postedVoiceSettings['stability'] ?? 50) / 100,
+                (float) ($postedVoiceSettings['similarity_boost'] ?? 75) / 100,
+                (float) ($postedVoiceSettings['style'] ?? 0) / 100,
                 isset($postedVoiceSettings['use_speaker_boost']),
-                (float) ($postedVoiceSettings['speed'] ?? 1.0)
+                (float) ($postedVoiceSettings['speed'] ?? 85) / 100
             );
         }
         $voiceSettings = tts_get_voice_settings();
