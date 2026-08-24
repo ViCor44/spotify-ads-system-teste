@@ -88,26 +88,33 @@ function pcmSilence(float $seconds, int $sampleRate = 22050, int $channels = 1, 
     return str_repeat("\x00", $numFrames * $channels * $bytesPerSample);
 }
 
-/** Aumenta o ganho de PCM 16-bit sem ultrapassar o pico digital. */
+/**
+ * Aplica ganho a PCM 16-bit com um limitador suave.
+ *
+ * Limitar o multiplicador pelo maior pico do ficheiro anulava praticamente
+ * todo o ganho quando a ElevenLabs devolvia apenas uma amostra perto de 0 dB.
+ * A curva abaixo amplifica as restantes amostras e comprime progressivamente
+ * apenas as que se aproximam do limite digital.
+ */
 function pcmApplyGain16(string $pcm, float $gain): string {
     if ($gain <= 0 || abs($gain - 1.0) < 0.001 || $pcm === '') return $pcm;
 
     $length = strlen($pcm) - (strlen($pcm) % 2);
-    $peak = 0;
-    for ($offset = 0; $offset < $length; $offset += 2) {
-        $sample = ord($pcm[$offset]) | (ord($pcm[$offset + 1]) << 8);
-        if ($sample >= 0x8000) $sample -= 0x10000;
-        $peak = max($peak, abs($sample));
-    }
-
-    if ($peak > 0) $gain = min($gain, 32767 / $peak);
-    if ($gain <= 1.0) return $pcm;
+    $limit = 32767.0;
+    $knee = $limit * 0.85;
+    $headroom = $limit - $knee;
 
     for ($offset = 0; $offset < $length; $offset += 2) {
         $sample = ord($pcm[$offset]) | (ord($pcm[$offset + 1]) << 8);
         if ($sample >= 0x8000) $sample -= 0x10000;
 
-        $sample = (int) round($sample * $gain);
+        $amplified = $sample * $gain;
+        $magnitude = abs($amplified);
+        if ($magnitude > $knee) {
+            $magnitude = $knee + $headroom * (1 - exp(-($magnitude - $knee) / $headroom));
+        }
+        $sample = (int) round(($amplified < 0 ? -1 : 1) * $magnitude);
+        $sample = max(-32768, min(32767, $sample));
         if ($sample < 0) $sample += 0x10000;
 
         $pcm[$offset]     = chr($sample & 0xff);
