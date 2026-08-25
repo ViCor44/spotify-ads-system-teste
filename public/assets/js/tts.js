@@ -207,7 +207,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let voiceSettingTimeout = null;
 
     function updateVoiceSettingValue(slider) {
-        const target = slider.getAttribute('data-target');
+        const target = slider.id;
         const valueSpan = ttsForm.querySelector('[data-target="' + target + '"]');
         if (valueSpan) {
             valueSpan.textContent = slider.value + '%';
