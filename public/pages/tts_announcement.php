@@ -340,6 +340,9 @@ foreach ($languageDefs as $lang => $def) {
         <input type="range" id="voice-speed" class="voice-setting-slider" name="voice_settings[speed]" min="70" max="120" value="<?= (int) round($ttsVoiceSettings['speed'] * 100) ?>" data-setting="speed">
         <span class="voice-setting-value" data-target="voice-speed"><?= (int) round($ttsVoiceSettings['speed'] * 100) ?>%</span>
       </div>
+      <p class="voice-speed-hint" id="voice-speed-hint" style="display:none; font-size:0.85em; color:#b91c1c; margin:-8px 0 8px;">
+        O modelo "v3 (alpha)" ignora este controlo de velocidade (a ElevenLabs não o suporta para v3). Escolha "Multilingual v2", "Turbo v2.5" ou "Flash v2.5" para a velocidade ter efeito.
+      </p>
       <div class="voice-setting-row voice-setting-checkbox">
         <input type="checkbox" id="voice-boost" name="voice_settings[use_speaker_boost]" value="1" <?= $ttsVoiceSettings['use_speaker_boost'] ? 'checked' : '' ?>>
         <label for="voice-boost">Amplificador do Orador (melhora a clareza)</label>

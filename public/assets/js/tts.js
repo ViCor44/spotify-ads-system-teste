@@ -262,6 +262,16 @@ document.addEventListener('DOMContentLoaded', function () {
     // =================== Seletor de Modelo (v2 / v3 / turbo / flash) ===================
     const modelSelect = document.getElementById('voice-model');
     const modelStatus = document.getElementById('voice-model-status');
+    const speedSlider = document.getElementById('voice-speed');
+    const speedHint = document.getElementById('voice-speed-hint');
+
+    // A ElevenLabs não aplica voice_settings.speed ao modelo v3 (alpha).
+    function updateSpeedSupport() {
+        if (!modelSelect || !speedSlider) return;
+        const isV3 = modelSelect.value.indexOf('eleven_v3') === 0;
+        speedSlider.disabled = isV3;
+        if (speedHint) speedHint.style.display = isV3 ? 'block' : 'none';
+    }
 
     function setModelStatus(msg, cls) {
         if (!modelStatus) return;
@@ -275,8 +285,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (modelSelect) {
+        updateSpeedSupport();
         modelSelect.addEventListener('change', async () => {
             const modelId = modelSelect.value;
+            updateSpeedSupport();
             setModelStatus('A guardar…', '');
             try {
                 const fd = new FormData();
