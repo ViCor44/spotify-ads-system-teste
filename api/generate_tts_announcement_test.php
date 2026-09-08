@@ -274,8 +274,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
         'pt' => [
             'plate_text'       => "Atenção ao proprietário do veículo %s %s, com a matrícula %s. Repito, matrícula %s. Por favor, dirija-se à receção. Obrigado",
             'plate_text_color' => "Atenção ao proprietário do veículo %s %s de cor %s, com a matrícula %s. Repito, matrícula %s. Por favor, dirija-se à receção. Obrigado",
-            'child_text'  => "Atenção, solicitamos a presença dos pais ou responsáveis da criança, %s, repito, %s, junto à receção. Obrigado",
-            'person_text' => "Atenção, solicitamos a presença de %s, repito, %s, junto à receção. Obrigado",
+            'child_text'  => "A vossa atenção por favor, solicitamos a presença dos pais ou responsáveis da criança, %s, repito, %s, junto à receção. Obrigado",
+            'person_text' => "A vossa atenção por favor, solicitamos a presença de %s, repito, %s, junto à receção. Obrigado",
             'phoneticMap' => [ 'A'=>'Á','B'=>'Bê','C'=>'Cê','D'=>'Dê','E'=>'É','F'=>'Efe','G'=>'Gê','H'=>'Agá','I'=>'I','J'=>'Jota','K'=>'Cápa','L'=>'Ele','M'=>'Eme','N'=>'Ene','O'=>'Ó','P'=>'Pê','Q'=>'Quê','R'=>'Erre','S'=>'Esse','T'=>'Tê','U'=>'U','V'=>'Vê','W'=>'Dáblio','X'=>'Xis','Y'=>'Ipsílon','Z'=>'Zê' ],
             'numberFormatter' => 'numeroParaExtensoPT'
         ],
