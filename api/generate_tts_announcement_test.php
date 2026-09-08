@@ -390,6 +390,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
             );
         }
         $voiceSettings = tts_get_voice_settings();
+        // A ElevenLabs ignora "speed" para o modelo v3 (só se aplica a v2/turbo/flash).
+        if (strpos($modelId, 'eleven_v3') === 0) {
+            unset($voiceSettings['speed']);
+        }
 
         // Parâmetros de áudio uniformes (para concatenar PCM sem clicks)
         $SAMPLE_RATE = 22050;
