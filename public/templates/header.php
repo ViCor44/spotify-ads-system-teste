@@ -1,7 +1,9 @@
 <?php
 // public/templates/header.php
 $page = $_GET['page'] ?? 'dashboard';
-$bodyClass = ($page === 'dashboard') ? 'theme-dark' : '';
+// Default por página: dashboard = escuro; restantes = claro. Utilizador pode sobrepor via toggle.
+$defaultTheme = ($page === 'dashboard') ? 'dark' : 'light';
+$bodyClass = ($defaultTheme === 'dark') ? 'theme-dark' : '';
 ?>
 <!DOCTYPE html>
 <html lang="pt">
@@ -20,7 +22,18 @@ $bodyClass = ($page === 'dashboard') ? 'theme-dark' : '';
     <!-- Ligação para o ficheiro de estilos externo -->
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
-<body class="<?= $bodyClass ?? '' ?>">
+<body class="<?= $bodyClass ?>">
+    <!-- Aplica preferência de tema guardada antes de renderizar o resto do conteúdo (evita "flash") -->
+    <script>
+        (function () {
+            try {
+                var saved = localStorage.getItem('spot-master-theme');
+                if (saved === 'dark' || saved === 'light') {
+                    document.body.classList.toggle('theme-dark', saved === 'dark');
+                }
+            } catch (e) { /* ignore */ }
+        })();
+    </script>
     <div class="audio-prompt" id="audioPrompt">
         <span>O leitor de anúncios está inativo.</span>
         <button id="enableAudioButton">Ativar Áudio</button>
@@ -49,6 +62,10 @@ $bodyClass = ($page === 'dashboard') ? 'theme-dark' : '';
 
             <!-- Item 3: O Rodapé Fixo -->
             <div class="sidebar-footer">
+                <a href="#" id="theme-toggle-btn" title="Alternar tema claro/escuro">
+                    <i class="fa-solid fa-moon"></i>
+                    <span>Tema</span>
+                </a>
                 <a href="#" id="fullscreen-btn" title="Alternar Ecrã Inteiro">
                     <i class="fa-solid fa-expand"></i>
                     <span>Ecrã Inteiro</span>

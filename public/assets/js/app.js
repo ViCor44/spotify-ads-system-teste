@@ -366,6 +366,37 @@ document.addEventListener('DOMContentLoaded', function () {
         document.addEventListener('fullscreenchange', updateFullscreenButton);
     }
 
+    // Lógica do botão de alternar tema (claro/escuro)
+    const themeToggleBtn = document.getElementById('theme-toggle-btn');
+    if (themeToggleBtn) {
+        const themeIcon = themeToggleBtn.querySelector('i');
+        const themeText = themeToggleBtn.querySelector('span');
+
+        function updateThemeButton() {
+            const isDark = document.body.classList.contains('theme-dark');
+            if (isDark) {
+                themeIcon.classList.remove('fa-moon');
+                themeIcon.classList.add('fa-sun');
+                themeText.textContent = 'Tema Claro';
+            } else {
+                themeIcon.classList.remove('fa-sun');
+                themeIcon.classList.add('fa-moon');
+                themeText.textContent = 'Tema Escuro';
+            }
+        }
+
+        themeToggleBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const isDark = document.body.classList.toggle('theme-dark');
+            try {
+                localStorage.setItem('spot-master-theme', isDark ? 'dark' : 'light');
+            } catch (err) { /* ignore */ }
+            updateThemeButton();
+        });
+
+        updateThemeButton();
+    }
+
     // Lógica para o acordeão de agendamentos
     const accordionHeaders = document.querySelectorAll('.accordion-header');
     accordionHeaders.forEach(header => {

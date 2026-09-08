@@ -951,6 +951,11 @@ body.theme-dark {
     background-color: #282828;
     color: var(--text-white);
 }
+.sidebar-footer a i {
+    width: 20px;
+    text-align: center;
+    font-size: 1.1em;
+}
 /* --- Estilos para a Zona de Perigo e Botões Desativados --- */
 fieldset[disabled] {
     opacity: 0.5;
