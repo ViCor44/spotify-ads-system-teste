@@ -3,7 +3,10 @@
 $page = $_GET['page'] ?? 'dashboard';
 // Default por página: dashboard = escuro; restantes = claro. Utilizador pode sobrepor via toggle.
 $defaultTheme = ($page === 'dashboard') ? 'dark' : 'light';
-$bodyClass = ($defaultTheme === 'dark') ? 'theme-dark' : '';
+$bodyClasses = [];
+if ($defaultTheme === 'dark') { $bodyClasses[] = 'theme-dark'; }
+$bodyClasses[] = 'page-' . preg_replace('/[^a-z0-9_-]/i', '', $page);
+$bodyClass = implode(' ', $bodyClasses);
 ?>
 <!DOCTYPE html>
 <html lang="pt">

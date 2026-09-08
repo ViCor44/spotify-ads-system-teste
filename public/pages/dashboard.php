@@ -50,15 +50,21 @@
 <?php endif; ?>
 
 <div class="page-header">
-    <h1><i class="fa-solid fa-house"></i> Dashboard</h1>
-    <div id="live-clock" class="live-clock">--:--:--</div>
+    <div class="page-header-title">
+        <h1><i class="fa-solid fa-house"></i> Dashboard</h1>
+        <p class="page-subtitle">Visão geral em tempo real do Spot Master</p>
+    </div>
+    <div class="live-clock-wrapper">
+        <div id="live-clock" class="live-clock">--:--:--</div>
+        <div id="live-date" class="live-date"></div>
+    </div>
 </div>
 
 <!-- GRELHA SUPERIOR DO DASHBOARD (3 COLUNAS) -->
 <div class="dashboard-grid-top">
     <!-- Card "A Tocar Agora" -->
     <div id="now-playing-component" class="box" <?= !($playbackState && isset($playbackState->item)) ? 'style="display: none;"' : '' ?>>
-        <h2><i class="fa-solid fa-music"></i> A Tocar Agora</h2>
+        <h2><i class="fa-solid fa-music"></i> A Tocar Agora <span class="live-pill">Ao Vivo</span></h2>
         <div id="now-playing-content" class="now-playing-card">
             <div id="album-art" class="album-art">
                 <?php if (!empty($playbackState->item->album->images)): ?>

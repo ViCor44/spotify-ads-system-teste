@@ -263,12 +263,20 @@ document.addEventListener('DOMContentLoaded', function () {
     function startLiveClock() {
         const clockElement = document.getElementById('live-clock');
         if (!clockElement) return;
+        const dateElement = document.getElementById('live-date');
+        const dateFormatter = new Intl.DateTimeFormat('pt-PT', {
+            weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
+        });
         const updateClock = () => {
             const now = new Date();
             const hours = String(now.getHours()).padStart(2, '0');
             const minutes = String(now.getMinutes()).padStart(2, '0');
             const seconds = String(now.getSeconds()).padStart(2, '0');
             clockElement.textContent = `${hours}:${minutes}:${seconds}`;
+            if (dateElement) {
+                const formatted = dateFormatter.format(now);
+                dateElement.textContent = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+            }
         };
         updateClock();
         setInterval(updateClock, 1000);
