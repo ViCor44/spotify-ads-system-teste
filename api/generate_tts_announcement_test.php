@@ -282,20 +282,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
         'en' => [
             'plate_text'       => "Attention to the owner of the %s %s, with license plate %s. I repeat, %s. Please proceed to the reception. Thank you",
             'plate_text_color' => "Attention to the owner of the %s %s, %s in color, with license plate %s. I repeat, %s. Please proceed to the reception. Thank you",
-            'child_text'  => "Attention, we request the presence of the parents or guardians of the child %s. I repeat, %s. at the reception. Thank you",
-            'person_text' => "Attention, we request the presence of %s. I repeat, %s. at the reception. Thank you",
+            'child_text'  => "Your attention, please, we request the presence of the parents or guardians of the child %s. I repeat, %s. at the reception. Thank you",
+            'person_text' => "Your attention, please, we request the presence of %s. I repeat, %s. at the reception. Thank you",
         ],
         'es' => [
             'plate_text'       => "Atención al propietario del vehículo %s %s, con matrícula %s. Repito, %s. Por favor, diríjase a recepción. Gracias",
             'plate_text_color' => "Atención al propietario del vehículo %s %s de color %s, con matrícula %s. Repito, %s. Por favor, diríjase a recepción. Gracias",
-            'child_text'  => "Atención, solicitamos la presencia de los padres o responsables del niño %s. Repito, %s. en la recepción. Gracias",
-            'person_text' => "Atención, solicitamos la presencia de %s. Repito, %s. en la recepción. Gracias",
+            'child_text'  => "Por favor, presten atención, solicitamos la presencia de los padres o responsables del niño %s. Repito, %s. en la recepción. Gracias",
+            'person_text' => "Por favor, presten atención, solicitamos la presencia de %s. Repito, %s. en la recepción. Gracias",
         ],
         'fr' => [
             'plate_text'       => "Attention au propriétaire du véhicule %s %s, avec la plaque d'immatriculation %s. Je répète, %s. Veuillez vous présenter à la réception. Merci",
             'plate_text_color' => "Attention au propriétaire du véhicule %s %s de couleur %s, avec la plaque d'immatriculation %s. Je répète, %s. Veuillez vous présenter à la réception. Merci",
-            'child_text'  => "Attention, nous demandons la présence des parents ou tuteurs de l'enfant %s. Je répète, %s. à la réception. Merci",
-            'person_text' => "Attention, nous demandons la présence de %s. Je répète, %s. à la réception. Merci",
+            'child_text'  => "Votre attention, s'il vous plaît, nous demandons la présence des parents ou tuteurs de l'enfant %s. Je répète, %s. à la réception. Merci",
+            'person_text' => "Votre attention, s'il vous plaît, nous demandons la présence de %s. Je répète, %s. à la réception. Merci",
         ],
     ];
 
