@@ -49,8 +49,44 @@ $bodyClass = implode(' ', $bodyClasses);
             <!-- Item 1: O Cabeçalho -->
             <div class="sidebar-card-header">
                 <a href="index.php?page=about" class="sidebar-title-link">
-                    <h2 class="sidebar-header"><i class="fa-solid fa-tower-broadcast"></i> Spot Master</h2>
-                    <small>Versão 1.0</small>
+                    <div class="sidebar-brand">
+                        <svg class="sidebar-logo" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <defs>
+                                <linearGradient id="spotMasterGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#1ed760"/>
+                                    <stop offset="100%" stop-color="#0e8c3f"/>
+                                </linearGradient>
+                                <linearGradient id="spotMasterShine" x1="0%" y1="0%" x2="0%" y2="100%">
+                                    <stop offset="0%" stop-color="#ffffff" stop-opacity="0.28"/>
+                                    <stop offset="55%" stop-color="#ffffff" stop-opacity="0"/>
+                                </linearGradient>
+                            </defs>
+                            <rect x="0" y="0" width="48" height="48" rx="14" fill="url(#spotMasterGrad)"/>
+                            <rect x="0" y="0" width="48" height="48" rx="14" fill="url(#spotMasterShine)"/>
+                            <g fill="#ffffff">
+                                <rect x="11" y="18" width="4" height="12" rx="2">
+                                    <animate attributeName="height" values="10;20;10" dur="1.2s" repeatCount="indefinite"/>
+                                    <animate attributeName="y" values="19;14;19" dur="1.2s" repeatCount="indefinite"/>
+                                </rect>
+                                <rect x="19" y="12" width="4" height="24" rx="2">
+                                    <animate attributeName="height" values="24;10;24" dur="1.2s" begin="-0.4s" repeatCount="indefinite"/>
+                                    <animate attributeName="y" values="12;19;12" dur="1.2s" begin="-0.4s" repeatCount="indefinite"/>
+                                </rect>
+                                <rect x="27" y="16" width="4" height="16" rx="2">
+                                    <animate attributeName="height" values="14;22;14" dur="1.2s" begin="-0.2s" repeatCount="indefinite"/>
+                                    <animate attributeName="y" values="17;13;17" dur="1.2s" begin="-0.2s" repeatCount="indefinite"/>
+                                </rect>
+                                <rect x="35" y="20" width="4" height="8" rx="2">
+                                    <animate attributeName="height" values="8;16;8" dur="1.2s" begin="-0.6s" repeatCount="indefinite"/>
+                                    <animate attributeName="y" values="20;16;20" dur="1.2s" begin="-0.6s" repeatCount="indefinite"/>
+                                </rect>
+                            </g>
+                        </svg>
+                        <div class="sidebar-brand-text">
+                            <span class="brand-name">Spot<span class="brand-accent">Master</span></span>
+                            <span class="brand-version">v1.0</span>
+                        </div>
+                    </div>
                 </a>
             </div>
 

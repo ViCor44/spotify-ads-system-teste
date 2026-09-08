@@ -859,37 +859,72 @@ body.theme-dark {
 
 /* --- Cabeçalho da Sidebar --- */
 .sidebar-card-header {
-    padding: 15px 20px;
+    padding: 18px 16px;
     border-bottom: 1px solid #282828;
-    flex-shrink: 0; /* Impede que o cabeçalho encolha */
+    flex-shrink: 0;
 }
 .sidebar-title-link {
     display: block;
     text-decoration: none;
-    text-align: center;
-    padding: 15px;
-    border-radius: 8px;
+    padding: 10px 12px;
+    border-radius: 12px;
     transition: background-color 0.2s ease-in-out;
 }
 .sidebar-title-link:hover {
     background-color: #282828;
 }
-.sidebar-header {
-    padding: 0;
-    margin: 0;
-    border: none;
-    font-size: 1.7em;
-    font-weight: 700;
-    font-family: 'Poppins', sans-serif; /* <-- ADICIONE ESTA LINHA */
-    color: var(--text-white);
+.sidebar-title-link:hover .sidebar-logo {
+    transform: rotate(-4deg) scale(1.05);
+}
+.sidebar-brand {
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 14px;
 }
-.sidebar-header i {
+.sidebar-logo {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border-radius: 14px;
+    box-shadow: 0 6px 14px rgba(29, 185, 84, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.sidebar-brand-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+    min-width: 0;
+}
+.brand-name {
+    font-family: 'Poppins', 'Inter', sans-serif;
+    font-size: 1.35em;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--text-white);
+    white-space: nowrap;
+}
+.brand-accent {
+    background: linear-gradient(135deg, #1ed760 0%, #7bffb2 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    margin-left: 0.28em;
+}
+.brand-version {
+    display: inline-block;
+    align-self: flex-start;
+    margin-top: 4px;
+    padding: 1px 8px;
+    background: rgba(29, 185, 84, 0.15);
     color: var(--spotify-green);
-    margin-right: 10px;
+    border-radius: 999px;
+    font-size: 0.7em;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
 }
+
 .sidebar-card-header small {
     display: block;
     color: var(--text-light);
