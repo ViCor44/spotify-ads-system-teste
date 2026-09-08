@@ -847,20 +847,20 @@ body.theme-dark {
 
 .sidebar {
     width: var(--sidebar-width);
-    background-color: var(--sidebar-bg);
+    background: linear-gradient(180deg, #0a0a0a 0%, #121212 60%, #0d0d0d 100%);
     color: var(--text-light);
-    height: 100vh; /* Ocupa a altura total do ecrã */
+    height: 100vh;
     position: fixed;
-    
-    /* A LÓGICA CRUCIAL ESTÁ AQUI */
     display: flex;
-    flex-direction: column; /* Organiza os itens verticalmente */
+    flex-direction: column;
+    border-right: 1px solid rgba(255, 255, 255, 0.04);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35);
 }
 
 /* --- Cabeçalho da Sidebar --- */
 .sidebar-card-header {
     padding: 18px 16px;
-    border-bottom: 1px solid #282828;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     flex-shrink: 0;
 }
 .sidebar-title-link {
@@ -871,7 +871,7 @@ body.theme-dark {
     transition: background-color 0.2s ease-in-out;
 }
 .sidebar-title-link:hover {
-    background-color: #282828;
+    background-color: rgba(255, 255, 255, 0.04);
 }
 .sidebar-title-link:hover .sidebar-logo {
     transform: rotate(-4deg) scale(1.05);
@@ -935,61 +935,109 @@ body.theme-dark {
 /* --- Lista de Menus (a parte que cresce e faz scroll) --- */
 .sidebar ul {
     list-style-type: none;
-    padding: 0;
-    margin-top: 20px;
-    flex-grow: 1; /* Ocupa todo o espaço vertical disponível */
-    overflow-y: auto; /* Cria uma barra de scroll APENAS se o conteúdo for demasiado grande */
+    padding: 8px 12px;
+    margin: 8px 0 0 0;
+    flex-grow: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
+.sidebar ul::-webkit-scrollbar { width: 6px; }
+.sidebar ul::-webkit-scrollbar-track { background: transparent; }
+.sidebar ul::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+}
+.sidebar ul::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.18); }
+
+.sidebar .menu-section {
+    padding: 14px 12px 6px 12px;
+    font-size: 0.68em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.6px;
+    color: rgba(255, 255, 255, 0.35);
+    pointer-events: none;
+}
+.sidebar ul li:first-child.menu-section { padding-top: 4px; }
+
 .sidebar ul li a {
     display: flex;
     align-items: center;
-    gap: 15px;
-    color: var(--text-light);
+    gap: 14px;
+    color: rgba(255, 255, 255, 0.72);
     font-weight: 500;
+    font-size: 0.95em;
     text-decoration: none;
-    padding: 15px 25px;
-    transition: all 0.2s ease-in-out;
-    border-left: 4px solid transparent;
+    padding: 11px 14px;
+    border: none;
+    border-radius: 10px;
+    position: relative;
+    transition: color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
+}
+.sidebar ul li a i {
+    width: 20px;
+    text-align: center;
+    font-size: 1em;
+    color: rgba(255, 255, 255, 0.5);
+    transition: color 0.18s ease, transform 0.2s ease;
 }
 .sidebar ul li a:hover {
-    background-color: #282828;
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--text-white);
+    transform: translateX(2px);
+    border: none;
+}
+.sidebar ul li a:hover i {
     color: var(--text-white);
 }
 .sidebar ul li a.active {
     color: var(--text-white);
-    border-left: 4px solid var(--spotify-green);
-    background-color: #282828;
+    background: linear-gradient(90deg, rgba(29, 185, 84, 0.22) 0%, rgba(29, 185, 84, 0.04) 100%);
+    box-shadow: inset 3px 0 0 var(--spotify-green);
+    border: none;
+    transform: none;
 }
-.sidebar ul li a i { 
-    width: 20px; 
-    text-align: center; 
-    font-size: 1.1em;
+.sidebar ul li a.active i {
+    color: var(--spotify-green);
+    transform: scale(1.08);
 }
 
-/* --- Rodapé da Sidebar (onde está o botão) --- */
+/* --- Rodapé da Sidebar --- */
 .sidebar-footer {
-    padding: 10px 0;
-    border-top: 1px solid #282828;
-    flex-shrink: 0; /* Impede que o rodapé encolha */
+    padding: 10px 12px 14px 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 .sidebar-footer a {
     display: flex;
     align-items: center;
-    gap: 15px;
-    color: var(--text-light);
+    gap: 14px;
+    color: rgba(255, 255, 255, 0.65);
     font-weight: 500;
+    font-size: 0.95em;
     text-decoration: none;
-    padding: 15px 25px;
-    transition: all 0.2s ease-in-out;
+    padding: 11px 14px;
+    border-radius: 10px;
+    transition: color 0.18s ease, background-color 0.18s ease;
 }
 .sidebar-footer a:hover {
-    background-color: #282828;
+    background-color: rgba(255, 255, 255, 0.05);
     color: var(--text-white);
 }
 .sidebar-footer a i {
     width: 20px;
     text-align: center;
-    font-size: 1.1em;
+    font-size: 1em;
+    color: rgba(255, 255, 255, 0.4);
+    transition: color 0.18s ease;
+}
+.sidebar-footer a:hover i {
+    color: var(--spotify-green);
 }
 /* --- Estilos para a Zona de Perigo e Botões Desativados --- */
 fieldset[disabled] {

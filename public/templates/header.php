@@ -92,11 +92,16 @@ $bodyClass = implode(' ', $bodyClasses);
 
             <!-- Item 2: A Lista de Menus (que cresce e faz scroll) -->
             <ul>
-                <li><a href="index.php?page=dashboard" class="<?= $page === 'dashboard' ? 'active' : '' ?>"><i class="fa-solid fa-house"></i> Dashboard</a></li>
-                <li><a href="index.php?page=play_announcements" class="<?= $page === 'play_announcements' ? 'active' : '' ?>"><i class="fa-solid fa-play"></i> Tocar Anúncios</a></li>
-                <li><a href="index.php?page=manage_announcements" class="<?= $page === 'manage_announcements' ? 'active' : '' ?>"><i class="fa-solid fa-upload"></i> Gerir Anúncios</a></li>
-                <li><a href="index.php?page=manage_schedules&action=list" class="<?= $page === 'manage_schedules' ? 'active' : '' ?>"><i class="fa-solid fa-calendar-days"></i> Agendamentos</a></li>
-                <li><a href="index.php?page=tts_announcement" class="<?= $page === 'tts_announcement' ? 'active' : '' ?>"><i class="fa-solid fa-microphone-lines"></i> Anúncio TTS</a></li>
+                <li class="menu-section">Principal</li>
+                <li><a href="index.php?page=dashboard" class="<?= $page === 'dashboard' ? 'active' : '' ?>"><i class="fa-solid fa-house"></i> <span>Dashboard</span></a></li>
+
+                <li class="menu-section">Anúncios</li>
+                <li><a href="index.php?page=play_announcements" class="<?= $page === 'play_announcements' ? 'active' : '' ?>"><i class="fa-solid fa-play"></i> <span>Tocar Anúncios</span></a></li>
+                <li><a href="index.php?page=manage_announcements" class="<?= $page === 'manage_announcements' ? 'active' : '' ?>"><i class="fa-solid fa-upload"></i> <span>Gerir Anúncios</span></a></li>
+                <li><a href="index.php?page=tts_announcement" class="<?= $page === 'tts_announcement' ? 'active' : '' ?>"><i class="fa-solid fa-microphone-lines"></i> <span>Anúncio TTS</span></a></li>
+
+                <li class="menu-section">Agenda</li>
+                <li><a href="index.php?page=manage_schedules&action=list" class="<?= $page === 'manage_schedules' ? 'active' : '' ?>"><i class="fa-solid fa-calendar-days"></i> <span>Agendamentos</span></a></li>
             </ul>
 
             <!-- Item 3: O Rodapé Fixo -->
