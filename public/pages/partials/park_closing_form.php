@@ -81,15 +81,12 @@ if ($carryOverPeriod) {
 
     <section class="closing-periods" aria-labelledby="closing-periods-title">
         <div class="closing-timeline-heading">
-            <div>
-                <h3 id="closing-periods-title">Linha do tempo de fecho</h3>
-                <span>Passado e futuro do ano atual</span>
-            </div>
-            <strong><?= $currentYear ?></strong>
+            <h3 id="closing-periods-title">Linha do tempo <?= $currentYear ?></h3>
         </div>
 
         <?php if ($timelinePeriods): ?>
-            <ol class="closing-timeline">
+            <div class="closing-year-timeline">
+                <ol class="closing-year-track" style="--timeline-count: <?= count($timelinePeriods) ?>">
                 <?php foreach ($timelinePeriods as $period): ?>
                     <?php
                     $effectiveFrom = $period['effective_from'];
@@ -97,22 +94,11 @@ if ($carryOverPeriod) {
                     $isActive = $effectiveFrom === $activeClosingEffectiveFrom || $isLegacyActive;
                     $isFuture = $period['timeline_date'] > date('Y-m-d');
                     $timelineState = $isActive ? 'active' : ($isFuture ? 'future' : 'past');
-                    $stateLabel = $isActive ? 'Em vigor' : ($isFuture ? 'Futuro' : 'Passado');
-                    $periodDays = array_filter(explode(',', (string)$period['days']));
-                    $dayNames = array_map(fn($day) => $daysOfWeek[(int)$day], $periodDays);
                     ?>
-                    <li class="closing-timeline-item <?= $timelineState ?>">
-                        <span class="closing-timeline-marker" aria-hidden="true"></span>
-                        <div class="closing-timeline-date">
+                    <li class="closing-year-event <?= $timelineState ?>">
+                        <div class="closing-year-circle" title="<?= $isActive ? 'Em vigor' : ($isFuture ? 'Futuro' : 'Passado') ?>">
                             <time datetime="<?= htmlspecialchars($period['timeline_date']) ?>"><?= date('d/m', strtotime($period['timeline_date'])) ?></time>
-                            <span><?= $period['is_carry_over'] ? 'Continuação' : $stateLabel ?></span>
-                        </div>
-                        <div class="closing-timeline-details">
-                            <div>
-                                <strong><i class="fa-regular fa-clock"></i> <?= date('H:i', strtotime($period['play_at'])) ?></strong>
-                                <span><?= htmlspecialchars(implode(', ', $dayNames)) ?></span>
-                            </div>
-                            <span class="closing-timeline-status"><?= $stateLabel ?></span>
+                            <strong><?= date('H:i', strtotime($period['play_at'])) ?></strong>
                         </div>
                         <?php if (!$period['is_carry_over']): ?>
                             <form action="../api/delete_closing_period.php" method="post" onsubmit="return confirm('Apagar esta mudança de horário?');">
@@ -124,7 +110,8 @@ if ($carryOverPeriod) {
                         <?php endif; ?>
                     </li>
                 <?php endforeach; ?>
-            </ol>
+                </ol>
+            </div>
         <?php else: ?>
             <p class="closing-timeline-empty">Ainda não existem horários de fecho para <?= $currentYear ?>.</p>
         <?php endif; ?>
