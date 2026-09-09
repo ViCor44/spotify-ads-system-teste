@@ -1111,6 +1111,14 @@ fieldset[disabled] {
     color: var(--text-dark);
 }
 
+.theme-dark .accordion-title {
+    color: var(--text-white);
+}
+
+.theme-dark .accordion-header:hover {
+    background-color: #282828;
+}
+
 .accordion-actions {
     display: flex;
     align-items: center;
