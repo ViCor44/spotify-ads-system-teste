@@ -22,6 +22,21 @@ if ($carryOverPeriod) {
     $carryOverPeriod['is_carry_over'] = true;
     array_unshift($timelinePeriods, $carryOverPeriod);
 }
+
+$activeClosingPeriod = null;
+foreach ($closingPeriods as $period) {
+    $isLegacyActive = $period['effective_from'] === null && $activeClosingEffectiveFrom === null;
+    if ($period['effective_from'] === $activeClosingEffectiveFrom || $isLegacyActive) {
+        $activeClosingPeriod = $period;
+        break;
+    }
+}
+
+$selectedDays = array_map('intval', (array)($formData['days'] ?? ($activeClosingPeriod ? explode(',', $activeClosingPeriod['days']) : array_keys($daysOfWeek))));
+$defaultClosingTime = $activeClosingPeriod['play_at'] ?? '';
+$selectedHour = (string)($formData['closing_hour'] ?? ($defaultClosingTime ? date('H', strtotime($defaultClosingTime)) : ''));
+$selectedMinute = (string)($formData['closing_minute'] ?? ($defaultClosingTime ? date('i', strtotime($defaultClosingTime)) : ''));
+$selectedEffectiveFrom = (string)($formData['effective_from'] ?? date('Y-m-d'));
 ?>
 <div class="box box-compact">
     <h2>Agendar Sequência de Fecho do Parque</h2>
@@ -48,12 +63,12 @@ if ($carryOverPeriod) {
     <form action="../api/schedule_park_closing.php" method="post">
         <fieldset <?= $placeholderWarning ? 'disabled' : '' ?>> <!-- Desativa o formulário inteiro -->
             <label for="effective_from">Data de início:</label>
-            <input type="date" id="effective_from" name="effective_from" value="<?= date('Y-m-d') ?>" required>
+            <input type="date" id="effective_from" name="effective_from" value="<?= htmlspecialchars($selectedEffectiveFrom) ?>" required>
 
             <label>Selecione os Dias da Semana para o Fecho:</label>
             <div class="day-selector">
                 <?php foreach ($daysOfWeek as $num => $day): ?>
-                    <input type="checkbox" name="days[]" value="<?= $num ?>" id="day-closing-<?= $num ?>">
+                    <input type="checkbox" name="days[]" value="<?= $num ?>" id="day-closing-<?= $num ?>" <?= in_array($num, $selectedDays, true) ? 'checked' : '' ?>>
                     <label for="day-closing-<?= $num ?>"><?= $day ?></label>
                 <?php endforeach; ?>
             </div>
@@ -63,14 +78,16 @@ if ($carryOverPeriod) {
                 <select id="closing_hour" name="closing_hour" required aria-label="Hora de fecho">
                     <option value="">Hora</option>
                     <?php for ($hour = 0; $hour <= 23; $hour++): ?>
-                        <option value="<?= sprintf('%02d', $hour) ?>"><?= sprintf('%02d', $hour) ?></option>
+                        <?php $hourValue = sprintf('%02d', $hour); ?>
+                        <option value="<?= $hourValue ?>" <?= $hourValue === $selectedHour ? 'selected' : '' ?>><?= $hourValue ?></option>
                     <?php endfor; ?>
                 </select>
                 <span aria-hidden="true">:</span>
                 <select name="closing_minute" required aria-label="Minuto de fecho">
                     <option value="">Minuto</option>
                     <?php for ($minute = 0; $minute <= 59; $minute++): ?>
-                        <option value="<?= sprintf('%02d', $minute) ?>"><?= sprintf('%02d', $minute) ?></option>
+                        <?php $minuteValue = sprintf('%02d', $minute); ?>
+                        <option value="<?= $minuteValue ?>" <?= $minuteValue === $selectedMinute ? 'selected' : '' ?>><?= $minuteValue ?></option>
                     <?php endfor; ?>
                 </select>
             </div>

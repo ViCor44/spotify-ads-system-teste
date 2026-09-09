@@ -17,6 +17,8 @@ $closingTime = $closingHour !== '' && $closingMinute !== ''
     : (string)($_POST['closing_time'] ?? '');
 $effectiveFrom = (string)($_POST['effective_from'] ?? '');
 
+$_SESSION['form_data'] = $_POST;
+
 try {
     if (!$days || array_diff($days, range(1, 7)) || !preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $closingTime)) {
         throw new InvalidArgumentException('Selecione pelo menos um dia e indique uma hora de fecho válida.');
@@ -66,6 +68,7 @@ try {
     }
 
     $pdo->commit();
+    unset($_SESSION['form_data']);
     header('Location: ../public/index.php?page=manage_schedules&action=closing&status=closing_scheduled');
     exit();
 
