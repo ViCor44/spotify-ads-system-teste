@@ -5,12 +5,13 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use App\Database;
+use App\ScheduleValidity;
 
 try {
     $pdo = Database::getInstance();
     $nextAnnouncement = null;
 
-    $sqlNext = "SELECT s.day_of_week, s.play_at, a.title 
+    $sqlNext = "SELECT s.day_of_week, s.play_at, s.effective_from, a.title
                 FROM schedules s
                 JOIN announcements a ON s.announcement_id = a.id
                 WHERE s.is_active = 1";
@@ -20,34 +21,22 @@ try {
     if (!empty($allSchedules)) {
         date_default_timezone_set('Europe/Lisbon');
         $now = new DateTime();
-        $nextTimestamp = PHP_INT_MAX;
         $daysOfWeekMap = [1 => 'Segunda-feira', 2 => 'Terça-feira', 3 => 'Quarta-feira', 4 => 'Quinta-feira', 5 => 'Sexta-feira', 6 => 'Sábado', 7 => 'Domingo'];
+        $next = ScheduleValidity::findNext($allSchedules, ScheduleValidity::fetchClosingTransitions($pdo), $now);
 
-        foreach ($allSchedules as $schedule) {
-            $scheduleDay = (int)$schedule['day_of_week'];
-            $potentialDate = new DateTime('today ' . $schedule['play_at']);
-            $currentDayNum = (int)$potentialDate->format('N');
-            $dayDiff = $scheduleDay - $currentDayNum;
-            
-            if ($dayDiff < 0) { $dayDiff += 7; }
-            if ($dayDiff > 0) { $potentialDate->modify("+$dayDiff days"); }
-            if ($potentialDate < $now) { $potentialDate->modify('+7 days'); }
-            
-            $potentialTimestamp = $potentialDate->getTimestamp();
-
-            if ($potentialTimestamp < $nextTimestamp) {
-                $nextTimestamp = $potentialTimestamp;
-                $dayName = $daysOfWeekMap[$scheduleDay];
-                if (date('W', $nextTimestamp) != date('W', $now->getTimestamp())) {
-                    $dayName = "Próxima " . $dayName;
-                }
-                $nextAnnouncement = [
-                    'title' => $schedule['title'],
-                    'day' => $dayName,
-                    'time' => date("H:i", $nextTimestamp),
-                    'timestamp' => $nextTimestamp
-                ];
+        if ($next) {
+            $schedule = $next['schedule'];
+            $potentialDate = $next['date'];
+            $dayName = $daysOfWeekMap[(int)$schedule['day_of_week']];
+            if ($potentialDate->format('W') !== $now->format('W')) {
+                $dayName = "Próxima " . $dayName;
             }
+            $nextAnnouncement = [
+                'title' => $schedule['title'],
+                'day' => $dayName,
+                'time' => $potentialDate->format('H:i'),
+                'timestamp' => $potentialDate->getTimestamp()
+            ];
         }
     }
     

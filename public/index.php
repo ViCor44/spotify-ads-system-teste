@@ -9,6 +9,7 @@ define('SPOT_MASTER_INIT', true); // Define uma constante para segurança
 require_once __DIR__ . '/../init.php';
 
 use App\Database;
+use App\ScheduleValidity;
 use App\SpotifyClient;
 
 // --- GESTÃO CENTRALIZADA DE SESSÕES FLASH ---
@@ -72,7 +73,9 @@ try {
 
 // --- LÓGICA DE VERIFICAÇÃO DE ESTADO DO SISTEMA (CORRIGIDA) ---
 $placeholderWarning = false;
-$closingAnnouncementIds = []; 
+$closingAnnouncementIds = [];
+$closingPeriods = [];
+$activeClosingEffectiveFrom = null;
 try {
     $closingTitles = "'Fecho - 15 minutos', 'Fecho - 10 minutos', 'Fecho - 5 minutos', 'Fecho - Parque Fechado'";
     $sqlPlaceholders = "SELECT id, title, file_path FROM announcements WHERE title IN ($closingTitles)";
@@ -85,6 +88,24 @@ try {
             $placeholderWarning = true;
         }
     }
+
+    $sqlClosingPeriods = "SELECT s.effective_from, s.play_at,
+                                 GROUP_CONCAT(DISTINCT s.day_of_week ORDER BY s.day_of_week) AS days
+                          FROM schedules s
+                          JOIN announcements a ON a.id = s.announcement_id
+                          WHERE a.title = 'Fecho - Parque Fechado'
+                          GROUP BY s.effective_from, s.play_at
+                          ORDER BY s.effective_from IS NULL DESC, s.effective_from, s.play_at";
+    $closingPeriods = $pdo->query($sqlClosingPeriods)->fetchAll(PDO::FETCH_ASSOC);
+
+    $stmtActiveClosing = $pdo->prepare("SELECT MAX(s.effective_from)
+                                       FROM schedules s
+                                       JOIN announcements a ON a.id = s.announcement_id
+                                       WHERE a.title = 'Fecho - Parque Fechado'
+                                         AND s.is_active = 1
+                                         AND s.effective_from <= ?");
+    $stmtActiveClosing->execute([(new DateTime('today'))->format('Y-m-d')]);
+    $activeClosingEffectiveFrom = $stmtActiveClosing->fetchColumn() ?: null;
 } catch (Exception $e) {
     error_log("Erro ao verificar placeholders: " . $e->getMessage());
 }
@@ -106,7 +127,7 @@ if (file_exists($heartbeatFile)) {
 // --- LÓGICA MATEMÁTICA FINAL PARA ENCONTRAR O PRÓXIMO ANÚNCIO ---
 $nextAnnouncement = null;
 try {
-    $sqlNext = "SELECT s.day_of_week, s.play_at, a.title 
+    $sqlNext = "SELECT s.day_of_week, s.play_at, s.effective_from, a.title
                 FROM schedules s
                 JOIN announcements a ON s.announcement_id = a.id
                 WHERE s.is_active = 1";
@@ -116,32 +137,21 @@ try {
     if (!empty($allSchedules)) {
         date_default_timezone_set('Europe/Lisbon');
         $now = new DateTime();
-        $nextTimestamp = PHP_INT_MAX;
-        
-        foreach ($allSchedules as $schedule) {
-            $scheduleDay = (int)$schedule['day_of_week'];
-            $potentialDate = new DateTime('today ' . $schedule['play_at']);
-            $currentDayNum = (int)$potentialDate->format('N');
-            $dayDiff = $scheduleDay - $currentDayNum;
-            if ($dayDiff < 0) { $dayDiff += 7; }
-            if ($dayDiff > 0) { $potentialDate->modify("+$dayDiff days"); }
-            if ($potentialDate < $now) { $potentialDate->modify('+7 days'); }
-            $potentialTimestamp = $potentialDate->getTimestamp();
+        $next = ScheduleValidity::findNext($allSchedules, ScheduleValidity::fetchClosingTransitions($pdo), $now);
 
-            if ($potentialTimestamp < $nextTimestamp) {
-                $nextTimestamp = $potentialTimestamp;
-                $dayName = $daysOfWeekMap[$scheduleDay];
-                // A LINHA CORRIGIDA ESTÁ AQUI
-                if (date('W', $nextTimestamp) != date('W', $now->getTimestamp())) {
-                    $dayName = "Próxima " . $dayName;
-                }
-                $nextAnnouncement = [
-                    'title' => $schedule['title'],
-                    'day' => $dayName,
-                    'time' => date("H:i", $nextTimestamp),
-                    'timestamp' => $nextTimestamp
-                ];
+        if ($next) {
+            $schedule = $next['schedule'];
+            $potentialDate = $next['date'];
+            $dayName = $daysOfWeekMap[(int)$schedule['day_of_week']];
+            if ($potentialDate->format('W') !== $now->format('W')) {
+                $dayName = "Próxima " . $dayName;
             }
+            $nextAnnouncement = [
+                'title' => $schedule['title'],
+                'day' => $dayName,
+                'time' => $potentialDate->format('H:i'),
+                'timestamp' => $potentialDate->getTimestamp()
+            ];
         }
     }
 } catch (Exception $e) {

@@ -5,6 +5,7 @@ require_once __DIR__ . '/StatusStore.php';
 
 use SpotMaster\Api\StatusStore;
 use App\Database;
+use App\ScheduleValidity;
 
 if (session_status() === PHP_SESSION_ACTIVE) { session_write_close(); }
 
@@ -31,41 +32,31 @@ try {
     }
 
     // 2. Lógica para encontrar o PRÓXIMO fecho
-    $sqlClosing = "SELECT s.day_of_week, s.play_at FROM schedules s JOIN announcements a ON s.announcement_id = a.id WHERE a.title = 'Fecho - Parque Fechado' AND s.is_active = 1";
+    $sqlClosing = "SELECT s.day_of_week, s.play_at, s.effective_from, a.title
+                   FROM schedules s
+                   JOIN announcements a ON s.announcement_id = a.id
+                   WHERE a.title = 'Fecho - Parque Fechado' AND s.is_active = 1";
     $allClosingSchedules = $pdo->query($sqlClosing)->fetchAll(PDO::FETCH_ASSOC);
     
     if (!empty($allClosingSchedules)) {
         $status['closingScheduleExists'] = true;
         date_default_timezone_set('Europe/Lisbon');
         $now = new DateTime();
-        $nextClosingTimestamp = PHP_INT_MAX;
-        $tempNextClosing = null;
         $daysOfWeekMap = [1 => 'Segunda-feira', 2 => 'Terça-feira', 3 => 'Quarta-feira', 4 => 'Quinta-feira', 5 => 'Sexta-feira', 6 => 'Sábado', 7 => 'Domingo'];
-        
-        foreach ($allClosingSchedules as $schedule) {
-            $scheduleDay = (int)$schedule['day_of_week'];
-            $potentialDate = new DateTime('today ' . $schedule['play_at']);
-            $currentDayNum = (int)$potentialDate->format('N');
-            $dayDiff = $scheduleDay - $currentDayNum;
-            if ($dayDiff < 0) { $dayDiff += 7; }
-            if ($dayDiff > 0) { $potentialDate->modify("+$dayDiff days"); }
-            if ($potentialDate < $now) { $potentialDate->modify('+7 days'); }
-            
-            $potentialTimestamp = $potentialDate->getTimestamp();
+        $next = ScheduleValidity::findNext($allClosingSchedules, ScheduleValidity::fetchClosingTransitions($pdo), $now);
 
-            if ($potentialTimestamp < $nextClosingTimestamp) {
-                $nextClosingTimestamp = $potentialTimestamp;
-                $dayName = $daysOfWeekMap[$scheduleDay];
-                if (date('W', $nextClosingTimestamp) != date('W', $now->getTimestamp())) {
-                    $dayName = "Próxima " . $dayName;
-                }
-                $tempNextClosing = [
-                    'day' => $dayName,
-                    'time' => date("H:i", $nextClosingTimestamp)
-                ];
+        if ($next) {
+            $schedule = $next['schedule'];
+            $potentialDate = $next['date'];
+            $dayName = $daysOfWeekMap[(int)$schedule['day_of_week']];
+            if ($potentialDate->format('W') !== $now->format('W')) {
+                $dayName = "Próxima " . $dayName;
             }
+            $status['nextClosing'] = [
+                'day' => $dayName,
+                'time' => $potentialDate->format('H:i')
+            ];
         }
-        $status['nextClosing'] = $tempNextClosing;
     }
     
     // 3. Verifica se existem áudios provisórios nos anúncios de fecho

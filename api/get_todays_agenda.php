@@ -11,13 +11,25 @@ try {
     $currentDay = (int)date('N');
     $currentTime = date('H:i:s');
     
-    $sqlAgenda = "SELECT a.title, s.play_at 
+    $closingTitles = "'Fecho - 15 minutos', 'Fecho - 10 minutos', 'Fecho - 5 minutos', 'Fecho - Parque Fechado'";
+    $sqlAgenda = "SELECT a.title, s.play_at
                   FROM schedules s
                   JOIN announcements a ON s.announcement_id = a.id
                   WHERE s.day_of_week = ? AND s.play_at >= ? AND s.is_active = 1
+                    AND (
+                        a.title NOT IN ($closingTitles)
+                        OR s.effective_from <=> (
+                            SELECT MAX(s2.effective_from)
+                            FROM schedules s2
+                            JOIN announcements a2 ON a2.id = s2.announcement_id
+                            WHERE a2.title IN ($closingTitles)
+                              AND s2.is_active = 1
+                              AND s2.effective_from <= ?
+                        )
+                    )
                   ORDER BY s.play_at ASC";
     $stmtAgenda = $pdo->prepare($sqlAgenda);
-    $stmtAgenda->execute([$currentDay, $currentTime]);
+    $stmtAgenda->execute([$currentDay, $currentTime, date('Y-m-d')]);
     $todaysAgenda = $stmtAgenda->fetchAll(PDO::FETCH_ASSOC);
 
     // Formata os dados para o JS

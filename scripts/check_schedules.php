@@ -41,10 +41,25 @@ try {
     $statusStore = new StatusStore(__DIR__ . '/../public/status.json');
     $currentDayOfWeek = (int)$now->format('N');
 
-    // 1. Vai buscar TODOS os agendamentos ativos para o dia de hoje
-    $sql = "SELECT id, announcement_id, play_at FROM schedules WHERE day_of_week = ? AND is_active = 1";
+        // 1. Vai buscar os agendamentos gerais e apenas a configuração de fecho vigente
+        $closingTitles = "'Fecho - 15 minutos', 'Fecho - 10 minutos', 'Fecho - 5 minutos', 'Fecho - Parque Fechado'";
+        $sql = "SELECT s.id, s.announcement_id, s.play_at
+                        FROM schedules s
+                        JOIN announcements a ON a.id = s.announcement_id
+                        WHERE s.day_of_week = ? AND s.is_active = 1
+                            AND (
+                                    a.title NOT IN ($closingTitles)
+                                    OR s.effective_from <=> (
+                                            SELECT MAX(s2.effective_from)
+                                            FROM schedules s2
+                                            JOIN announcements a2 ON a2.id = s2.announcement_id
+                                            WHERE a2.title IN ($closingTitles)
+                                                AND s2.is_active = 1
+                                                AND s2.effective_from <= ?
+                                    )
+                            )";
     $stmt = $pdo->prepare($sql);
-    $stmt->execute([$currentDayOfWeek]);
+        $stmt->execute([$currentDayOfWeek, $now->format('Y-m-d')]);
     $todaysSchedules = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     if (!$todaysSchedules) {
