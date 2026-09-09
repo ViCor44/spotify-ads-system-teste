@@ -10,7 +10,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $days = array_values(array_unique(array_map('intval', (array)($_POST['days'] ?? []))));
-$closingTime = (string)($_POST['closing_time'] ?? '');
+$closingHour = (string)($_POST['closing_hour'] ?? '');
+$closingMinute = (string)($_POST['closing_minute'] ?? '');
+$closingTime = $closingHour !== '' && $closingMinute !== ''
+    ? $closingHour . ':' . $closingMinute
+    : (string)($_POST['closing_time'] ?? '');
 $effectiveFrom = (string)($_POST['effective_from'] ?? '');
 
 try {

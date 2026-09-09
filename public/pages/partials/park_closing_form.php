@@ -1,6 +1,27 @@
 <?php
 // public/pages/partials/park_closing_form.php
 $daysOfWeek = [1 => 'Segunda', 2 => 'Terça', 3 => 'Quarta', 4 => 'Quinta', 5 => 'Sexta', 6 => 'Sábado', 7 => 'Domingo'];
+$currentYear = date('Y');
+$yearStart = $currentYear . '-01-01';
+$yearEnd = $currentYear . '-12-31';
+$timelinePeriods = [];
+$carryOverPeriod = null;
+
+foreach ($closingPeriods as $period) {
+    if ($period['effective_from'] === null || $period['effective_from'] < $yearStart) {
+        $carryOverPeriod = $period;
+    } elseif ($period['effective_from'] <= $yearEnd) {
+        $period['timeline_date'] = $period['effective_from'];
+        $period['is_carry_over'] = false;
+        $timelinePeriods[] = $period;
+    }
+}
+
+if ($carryOverPeriod) {
+    $carryOverPeriod['timeline_date'] = $yearStart;
+    $carryOverPeriod['is_carry_over'] = true;
+    array_unshift($timelinePeriods, $carryOverPeriod);
+}
 ?>
 <div class="box box-compact">
     <h2>Agendar Sequência de Fecho do Parque</h2>
@@ -37,39 +58,63 @@ $daysOfWeek = [1 => 'Segunda', 2 => 'Terça', 3 => 'Quarta', 4 => 'Quinta', 5 =>
                 <?php endforeach; ?>
             </div>
 
-            <label for="closing_time">Hora de Fecho (formato 24h):</label>
-            <input type="time" id="closing_time" name="closing_time" required>
+            <label for="closing_hour">Hora de Fecho (formato 24h):</label>
+            <div class="time-24-control">
+                <select id="closing_hour" name="closing_hour" required aria-label="Hora de fecho">
+                    <option value="">Hora</option>
+                    <?php for ($hour = 0; $hour <= 23; $hour++): ?>
+                        <option value="<?= sprintf('%02d', $hour) ?>"><?= sprintf('%02d', $hour) ?></option>
+                    <?php endfor; ?>
+                </select>
+                <span aria-hidden="true">:</span>
+                <select name="closing_minute" required aria-label="Minuto de fecho">
+                    <option value="">Minuto</option>
+                    <?php for ($minute = 0; $minute <= 59; $minute++): ?>
+                        <option value="<?= sprintf('%02d', $minute) ?>"><?= sprintf('%02d', $minute) ?></option>
+                    <?php endfor; ?>
+                </select>
+            </div>
 
             <button type="submit">Agendar Sequência de Fecho</button>
         </fieldset>
     </form>
 
-    <?php if (!empty($closingPeriods)): ?>
-        <section class="closing-periods" aria-labelledby="closing-periods-title">
-            <h3 id="closing-periods-title">Mudanças de horário agendadas</h3>
-            <div class="closing-period-list">
-                <?php foreach ($closingPeriods as $period): ?>
+    <section class="closing-periods" aria-labelledby="closing-periods-title">
+        <div class="closing-timeline-heading">
+            <div>
+                <h3 id="closing-periods-title">Linha do tempo de fecho</h3>
+                <span>Passado e futuro do ano atual</span>
+            </div>
+            <strong><?= $currentYear ?></strong>
+        </div>
+
+        <?php if ($timelinePeriods): ?>
+            <ol class="closing-timeline">
+                <?php foreach ($timelinePeriods as $period): ?>
                     <?php
                     $effectiveFrom = $period['effective_from'];
                     $isLegacyActive = $effectiveFrom === null && $activeClosingEffectiveFrom === null;
                     $isActive = $effectiveFrom === $activeClosingEffectiveFrom || $isLegacyActive;
-                    $isFuture = $effectiveFrom !== null && $effectiveFrom > date('Y-m-d');
+                    $isFuture = $period['timeline_date'] > date('Y-m-d');
+                    $timelineState = $isActive ? 'active' : ($isFuture ? 'future' : 'past');
+                    $stateLabel = $isActive ? 'Em vigor' : ($isFuture ? 'Futuro' : 'Passado');
                     $periodDays = array_filter(explode(',', (string)$period['days']));
                     $dayNames = array_map(fn($day) => $daysOfWeek[(int)$day], $periodDays);
                     ?>
-                    <article class="closing-period<?= $isActive ? ' active' : '' ?>">
-                        <div class="closing-period-date">
-                            <i class="fa-regular fa-calendar"></i>
+                    <li class="closing-timeline-item <?= $timelineState ?>">
+                        <span class="closing-timeline-marker" aria-hidden="true"></span>
+                        <div class="closing-timeline-date">
+                            <time datetime="<?= htmlspecialchars($period['timeline_date']) ?>"><?= date('d/m', strtotime($period['timeline_date'])) ?></time>
+                            <span><?= $period['is_carry_over'] ? 'Continuação' : $stateLabel ?></span>
+                        </div>
+                        <div class="closing-timeline-details">
                             <div>
-                                <strong><?= $effectiveFrom ? date('d/m/Y', strtotime($effectiveFrom)) : 'Configuração anterior' ?></strong>
-                                <span><?= $isActive ? 'Em vigor' : ($isFuture ? 'Programado' : 'Substituído') ?></span>
+                                <strong><i class="fa-regular fa-clock"></i> <?= date('H:i', strtotime($period['play_at'])) ?></strong>
+                                <span><?= htmlspecialchars(implode(', ', $dayNames)) ?></span>
                             </div>
+                            <span class="closing-timeline-status"><?= $stateLabel ?></span>
                         </div>
-                        <div class="closing-period-details">
-                            <strong><?= date('H:i', strtotime($period['play_at'])) ?></strong>
-                            <span><?= htmlspecialchars(implode(', ', $dayNames)) ?></span>
-                        </div>
-                        <?php if ($effectiveFrom): ?>
+                        <?php if (!$period['is_carry_over']): ?>
                             <form action="../api/delete_closing_period.php" method="post" onsubmit="return confirm('Apagar esta mudança de horário?');">
                                 <input type="hidden" name="effective_from" value="<?= htmlspecialchars($effectiveFrom) ?>">
                                 <button type="submit" class="closing-period-delete" title="Apagar mudança de horário" aria-label="Apagar mudança de horário">
@@ -77,9 +122,11 @@ $daysOfWeek = [1 => 'Segunda', 2 => 'Terça', 3 => 'Quarta', 4 => 'Quinta', 5 =>
                                 </button>
                             </form>
                         <?php endif; ?>
-                    </article>
+                    </li>
                 <?php endforeach; ?>
-            </div>
-        </section>
-    <?php endif; ?>
+            </ol>
+        <?php else: ?>
+            <p class="closing-timeline-empty">Ainda não existem horários de fecho para <?= $currentYear ?>.</p>
+        <?php endif; ?>
+    </section>
 </div>
