@@ -82,7 +82,7 @@ Executar uma verificação manual:
 .\run_checker.bat
 ```
 
-Se o Dashboard indicar que o robô está offline, faça duplo clique em `instalar_robot.bat` e atualize a página após a mensagem de sucesso.
+Se o Dashboard indicar que o robô está offline, faça duplo clique em `instalar_robot.bat` e atualize a página após a mensagem de sucesso. As verificações automáticas usam `php-win.exe` e decorrem silenciosamente, sem abrir uma janela a cada minuto.
 
 Remover a tarefa automática:
 

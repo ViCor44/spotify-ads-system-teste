@@ -11,14 +11,18 @@ if ($Uninstall) {
     exit 0
 }
 
-$batchFile = Join-Path $PSScriptRoot 'run_checker.bat'
-if (-not (Test-Path $batchFile)) {
-    throw "Lançador não encontrado: $batchFile"
+$phpWin = 'C:\xampp\php\php-win.exe'
+$checkerScript = Join-Path $PSScriptRoot 'scripts\check_schedules.php'
+if (-not (Test-Path $phpWin)) {
+    throw "PHP sem janela não encontrado: $phpWin"
+}
+if (-not (Test-Path $checkerScript)) {
+    throw "Verificador não encontrado: $checkerScript"
 }
 
 $action = New-ScheduledTaskAction `
-    -Execute (Join-Path $env:SystemRoot 'System32\cmd.exe') `
-    -Argument ('/d /c ""{0}""' -f $batchFile) `
+    -Execute $phpWin `
+    -Argument ('-f "{0}"' -f $checkerScript) `
     -WorkingDirectory $PSScriptRoot
 $trigger = New-ScheduledTaskTrigger `
     -Once `
@@ -36,7 +40,7 @@ Register-ScheduledTask `
     -Action $action `
     -Trigger $trigger `
     -Settings $settings `
-    -Description 'Executa o verificador de anúncios do Spot Master a cada minuto.' `
+    -Description 'Executa silenciosamente o verificador de anúncios do Spot Master a cada minuto.' `
     -Force | Out-Null
 
 Write-Host "Tarefa criada: $taskName" -ForegroundColor Green
