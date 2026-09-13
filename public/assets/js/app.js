@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let lastAdInitialState = 'paused';
     let lastAdTitle = null;
     let lastPlayedKey = null; // Dedup: evita tocar o mesmo anúncio duas vezes se o status.json ainda não foi limpo
+    let isFinishingAd = false;
     
     // --- 2. FUNÇÕES ---
 
@@ -35,6 +36,65 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Limpa o ficheiro de status no servidor
     const clearStatusFile = () => fetch(`${rootPath}/api/clear_status.php`, { method: 'POST' });
+
+    const resumeSpotify = async (initialState, title) => {
+        const params = new URLSearchParams({
+            initial_state: initialState || 'paused',
+            title: title || ''
+        });
+        let lastError = null;
+
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+                const response = await fetch(`${rootPath}/api/announcement_finished.php?${params}`, {
+                    cache: 'no-store',
+                    keepalive: true
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const result = await response.json();
+                if (!result.success) throw new Error(result.error || 'Resposta inválida do servidor');
+                return;
+            } catch (error) {
+                lastError = error;
+                if (attempt < 3) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            }
+        }
+
+        throw lastError || new Error('Não foi possível retomar o Spotify');
+    };
+
+    const finishCurrentAnnouncement = async () => {
+        if (!isPlayingAd || isFinishingAd) return;
+        isFinishingAd = true;
+
+        const initialState = lastAdInitialState;
+        const title = lastAdTitle;
+        window.removeEventListener('beforeunload', beforeUnloadListener);
+        if (liveCountdownInterval) clearInterval(liveCountdownInterval);
+
+        const nextAdCardTitle = document.getElementById('next-ad-card-title');
+        if (nextAdCardTitle) {
+            nextAdCardTitle.innerHTML = `<i class="fa-solid fa-forward-step"></i> Próximo Anúncio`;
+        }
+
+        try {
+            await Promise.all([
+                clearStatusFile(),
+                resumeSpotify(initialState, title)
+            ]);
+        } catch (error) {
+            console.error('Erro ao concluir anúncio e retomar Spotify:', error);
+        } finally {
+            isPlayingAd = false;
+            isFinishingAd = false;
+            updateNextAnnouncementCard().then(startCountdown);
+            updateActivityLog();
+            updateTodaysAgenda();
+        }
+    };
 
     // Verifica o status.json e toca o anúncio se houver uma ordem
     const checkStatus = async () => {
@@ -86,15 +146,15 @@ document.addEventListener('DOMContentLoaded', function () {
                         gongPlayer.onended = () => {
                             adPlayer.src = `${rootPath}/public${data.url}`;
                             adPlayer.play().catch(e => {
-                                isPlayingAd = false;
-                                window.removeEventListener('beforeunload', beforeUnloadListener);
+                                console.error('Erro ao tocar anúncio:', e);
+                                finishCurrentAnnouncement();
                             });
                         };
                     } else {
                         adPlayer.src = `${rootPath}/public${data.url}`;
                         adPlayer.play().catch(e => {
-                            isPlayingAd = false;
-                            window.removeEventListener('beforeunload', beforeUnloadListener);
+                            console.error('Erro ao tocar anúncio:', e);
+                            finishCurrentAnnouncement();
                         });
                     }
                 }
@@ -293,31 +353,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- 3. INICIALIZAÇÃO E EVENTOS ---
     if (adPlayer) {
-        adPlayer.addEventListener('ended', () => {
-            window.removeEventListener('beforeunload', beforeUnloadListener);
-            if (liveCountdownInterval) clearInterval(liveCountdownInterval);
-            const nextAdCardTitle = document.getElementById('next-ad-card-title');
-            if (nextAdCardTitle) {
-                nextAdCardTitle.innerHTML = `<i class="fa-solid fa-forward-step"></i> Próximo Anúncio`;
-            }
-
-            // IMPORTANTE: só libertar isPlayingAd DEPOIS de o status.json estar
-            // efetivamente limpo no servidor. Caso contrário, o polling (1500ms)
-            // pode voltar a ler status='play' e reproduzir o anúncio outra vez
-            // sem que o Spotify seja pausado (a segunda vez não corta a música).
-            clearStatusFile()
-                .catch(() => {})
-                .finally(() => {
-                    isPlayingAd = false;
-                });
-
-            fetch(`${rootPath}/api/announcement_finished.php?initial_state=${lastAdInitialState}&title=${encodeURIComponent(lastAdTitle)}`)
-                .then(() => {
-                    updateNextAnnouncementCard().then(startCountdown);
-                    updateActivityLog();
-                    updateTodaysAgenda();
-                });
-        });
+        adPlayer.addEventListener('ended', finishCurrentAnnouncement);
+        adPlayer.addEventListener('error', finishCurrentAnnouncement);
     }
 
     if (enableAudioButton) {
