@@ -9,7 +9,6 @@ if (php_sapi_name() !== 'cli') {
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../api/StatusStore.php';
 use App\Database;
-use App\SpotifyClient;
 use SpotMaster\Api\StatusStore;
 
 // Define o fuso horário e os caminhos dos ficheiros de controlo
@@ -104,23 +103,14 @@ try {
         $announcement = $stmtAnn->fetch(PDO::FETCH_ASSOC);
 
         if ($announcement) {
-            $spotifyClient = new SpotifyClient();
-
-            // VERIFICA O ESTADO DO SPOTIFY ANTES DE FAZER QUALQUER COISA
-            $state = $spotifyClient->getPlaybackState();
-            $initialState = ($state && $state->is_playing) ? 'playing' : 'paused';
-            echo "Estado inicial do Spotify: $initialState\n";
-
-            $spotifyClient->pausePlayback();
-            echo "Spotify pausado (ou já estava em pausa).\n";
-
             // Envia a ordem completa para o ficheiro de status
             $status = [
                 'status' => 'play',
                 'url' => '/uploads/' . $announcement['file_path'],
                 'title' => $announcement['title'],
                 'duration' => (int)$announcement['duration_seconds'],
-                'initial_state' => $initialState, // A nossa "memória de estado"
+                'initial_state' => 'pending',
+                'pause_on_play' => true,
                 'play_id' => 'sched-' . $scheduleFound['id'] . '-' . $scheduledTime->format('YmdHi'), // Identificador único desta ocorrência (usado pelo JS para deduplicar)
                 'ts' => time()
             ];

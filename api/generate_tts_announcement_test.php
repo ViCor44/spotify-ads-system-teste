@@ -7,7 +7,6 @@ require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../config/database.php';
 
 use App\Database;
-use App\SpotifyClient;
 use GuzzleHttp\Client as HttpClient;
 use Google\Cloud\Translate\V2\TranslateClient;
 
@@ -460,12 +459,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
         $fileInfo = $getID3->analyze($filePath);
         $durationSeconds = isset($fileInfo['playtime_seconds']) ? (int) round($fileInfo['playtime_seconds']) : 0;
 
-        // Spotify (opcional)
-        $spotifyClient = new SpotifyClient();
-        $state = $spotifyClient->getPlaybackState();
-        $initialState = ($state && !empty($state->is_playing)) ? 'playing' : 'paused';
-        $spotifyClient->pausePlayback();
-
         $title = $textToLog . (empty($allLangsUsed) ? '' : ' (' . implode(', ', $allLangsUsed) . ')');
         $status = [
             'status'         => 'play',
@@ -473,8 +466,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
             'url'            => '/uploads/tts/' . $fileName,
             'title'          => $title,
             'duration'       => $durationSeconds,
-            'initial_state'  => $initialState,
+            'initial_state'  => 'pending',
+            'pause_on_play'  => true,
             'has_gong'       => $playGong, // gong é tocado pelo player se marcado
+            'play_id'        => 'tts-test-' . uniqid('', true),
+            'ts'             => time(),
         ];
         file_put_contents(__DIR__ . '/../public/status.json',
             json_encode($status, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));

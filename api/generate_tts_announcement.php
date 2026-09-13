@@ -6,7 +6,6 @@ require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../config/database.php';
 
 use App\Database;
-use App\SpotifyClient;
 use GuzzleHttp\Client as HttpClient;
 use getID3;
 
@@ -207,16 +206,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
         $fileInfo = $getID3->analyze($filePath);
         $durationSeconds = isset($fileInfo['playtime_seconds']) ? (int)round($fileInfo['playtime_seconds']) : 30;
 
-        $spotifyClient = new SpotifyClient();
-        $state = $spotifyClient->getPlaybackState();
-        $initialState = ($state && $state->is_playing) ? 'playing' : 'paused';
-        //$spotifyClient->pausePlayback();
-
         $status = [
             'status' => 'play', 'url' => '/uploads/tts/' . $fileName,
             'title' => $textToLog, 'duration' => $durationSeconds,
-            'initial_state' => $initialState,
-            'has_gong' => true
+            'initial_state' => 'pending',
+            'pause_on_play' => true,
+            'has_gong' => true,
+            'play_id' => 'tts-' . uniqid('', true),
+            'ts' => time()
         ];
         file_put_contents(__DIR__ . '/../public/status.json', json_encode($status));
 

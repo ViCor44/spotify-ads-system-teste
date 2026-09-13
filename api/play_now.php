@@ -6,7 +6,6 @@ require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/StatusStore.php';
 
 use App\Database;
-use App\SpotifyClient;
 use SpotMaster\Api\StatusStore;
 
 if (session_status() === PHP_SESSION_ACTIVE) {
@@ -40,37 +39,28 @@ try {
     $duration = (int)    $ann['duration_seconds'];
     $publicUrl = '/uploads/' . ltrim($filePath, '/');
 
-    // 2) Estado inicial do Spotify (best-effort)
-     $spotifyClient = new SpotifyClient();
-
-            // VERIFICA O ESTADO DO SPOTIFY ANTES DE FAZER QUALQUER COISA
-            $state = $spotifyClient->getPlaybackState();
-            $initialState = ($state && $state->is_playing) ? 'playing' : 'paused';
-            echo "Estado inicial do Spotify: $initialState\n";
-
-            $spotifyClient->pausePlayback();
-
-    // 3) Payload p/ status.json
+    // 2) Payload p/ status.json. O navegador pausa o Spotify quando receber a ordem.
     $payload = [
         'status'        => 'play',
         'title'         => $title,
         'url'           => $publicUrl,
         'has_gong'      => false,
         'duration'      => $duration,
-        'initial_state' => $initialState,
+        'initial_state' => 'pending',
+        'pause_on_play' => true,
         'play_id'       => 'manual-' . $announcementId . '-' . uniqid('', true), // Identificador único deste clique manual
         'ts'            => time(),
     ];
 
-    // 4) Escrita robusta (usa a tua StatusStore com flock/LOCK_EX)
+    // 3) Escrita robusta (usa a tua StatusStore com flock/LOCK_EX)
     $store = new StatusStore();
     $store->write($payload);
 
-    // 5) Log
+    // 4) Log
     $pdo->prepare('INSERT INTO activity_logs (announcement_title, play_type) VALUES (?, "Manual")')
         ->execute([$title]);
 
-    // 6) Resposta: JSON para AJAX; redirect só como fallback
+    // 5) Resposta: JSON para AJAX; redirect só como fallback
     $isAjax = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
 
     if ($isAjax) {

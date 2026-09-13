@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let lastAdTitle = null;
     let lastPlayedKey = null; // Dedup: evita tocar o mesmo anúncio duas vezes se o status.json ainda não foi limpo
     let isFinishingAd = false;
+    let playbackWatchdog = null;
     
     // --- 2. FUNÇÕES ---
 
@@ -74,6 +75,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const title = lastAdTitle;
         window.removeEventListener('beforeunload', beforeUnloadListener);
         if (liveCountdownInterval) clearInterval(liveCountdownInterval);
+        if (playbackWatchdog) clearTimeout(playbackWatchdog);
+        playbackWatchdog = null;
 
         const nextAdCardTitle = document.getElementById('next-ad-card-title');
         if (nextAdCardTitle) {
@@ -104,6 +107,15 @@ document.addEventListener('DOMContentLoaded', function () {
             if (response.ok) {
                 const data = await response.json();
                 if (data.status === 'play') {
+                    if (data.ts && (Math.floor(Date.now() / 1000) - Number(data.ts)) > 120) {
+                        if (data.initial_state === 'playing') {
+                            await resumeSpotify(data.initial_state, data.title).catch(error => {
+                                console.error('Não foi possível recuperar o Spotify de uma ordem expirada:', error);
+                            });
+                        }
+                        await clearStatusFile();
+                        return;
+                    }
 
                     // Dedup: se o mesmo pedido de reprodução já foi processado,
                     // ignora (evita replay enquanto o clear_status.php ainda está
@@ -117,6 +129,31 @@ document.addEventListener('DOMContentLoaded', function () {
                     
                     lastAdInitialState = data.initial_state || 'paused';
                     lastAdTitle = data.title || null;
+
+                    if (data.pause_on_play === true) {
+                        try {
+                            const pauseResponse = await fetch(`${rootPath}/api/start_spotify_pause.php?play_id=${encodeURIComponent(playKey)}`, {
+                                cache: 'no-store'
+                            });
+                            const pauseResult = await pauseResponse.json();
+                            if (!pauseResponse.ok || !pauseResult.success) {
+                                throw new Error(pauseResult.error || `HTTP ${pauseResponse.status}`);
+                            }
+                            lastAdInitialState = pauseResult.initial_state || 'paused';
+                        } catch (error) {
+                            console.error('Não foi possível preparar o Spotify para o anúncio:', error);
+                            lastPlayedKey = null;
+                            isPlayingAd = false;
+                            window.removeEventListener('beforeunload', beforeUnloadListener);
+                            return;
+                        }
+                    }
+
+                    const expectedDuration = Math.max(Number(data.duration) || 0, 1);
+                    playbackWatchdog = setTimeout(() => {
+                        console.error('O anúncio excedeu o tempo esperado; a retomar o Spotify.');
+                        finishCurrentAnnouncement();
+                    }, (expectedDuration * 1000) + 30000);
 
                     const nextAdCardTitle = document.getElementById('next-ad-card-title');
                     const nextAdContent = document.getElementById('next-ad-content');
@@ -142,7 +179,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     
                     // Lógica de Sequência com Gong
                     if (data.has_gong && gongPlayer) {
-                        gongPlayer.play().catch(e => console.error("Erro ao tocar gong:", e));
+                        gongPlayer.play().catch(e => {
+                            console.error("Erro ao tocar gong:", e);
+                            finishCurrentAnnouncement();
+                        });
                         gongPlayer.onended = () => {
                             adPlayer.src = `${rootPath}/public${data.url}`;
                             adPlayer.play().catch(e => {
