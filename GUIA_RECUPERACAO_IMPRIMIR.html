@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Guia de Backup e Recuperação - Spot Master</title>
+    <style>
+        :root {
+            --ink: #17201b;
+            --muted: #56615a;
+            --line: #b9c3bc;
+            --soft: #edf3ef;
+            --accent: #176b45;
+            --warning: #8a4b08;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: #e7ebe8;
+            color: var(--ink);
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: 11pt;
+            line-height: 1.42;
+        }
+
+        main {
+            width: 210mm;
+            margin: 12mm auto;
+            background: white;
+            box-shadow: 0 3mm 12mm rgb(23 32 27 / 16%);
+        }
+
+        .page {
+            min-height: 297mm;
+            padding: 16mm 17mm;
+            break-after: page;
+        }
+
+        .page:last-child { break-after: auto; }
+
+        header {
+            border-top: 5px solid var(--accent);
+            border-bottom: 1px solid var(--line);
+            padding: 7mm 0 5mm;
+            margin-bottom: 7mm;
+        }
+
+        h1, h2, h3 {
+            margin: 0;
+            color: var(--ink);
+            font-family: "Trebuchet MS", Verdana, sans-serif;
+            letter-spacing: 0;
+        }
+
+        h1 { font-size: 25pt; }
+        h2 { font-size: 17pt; margin-bottom: 4mm; }
+        h3 { font-size: 12pt; margin: 5mm 0 2mm; }
+
+        .subtitle {
+            margin: 2mm 0 0;
+            color: var(--muted);
+            font-size: 11pt;
+        }
+
+        .meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5mm;
+            margin: 6mm 0;
+        }
+
+        .field {
+            min-height: 12mm;
+            border-bottom: 1px solid var(--ink);
+            padding-top: 5mm;
+            color: var(--muted);
+            font-size: 9.5pt;
+        }
+
+        .notice {
+            margin: 5mm 0;
+            padding: 4mm 5mm;
+            border-left: 4px solid var(--accent);
+            background: var(--soft);
+        }
+
+        .notice.warning {
+            border-left-color: var(--warning);
+            background: #fff5e8;
+        }
+
+        ol, ul { margin: 2mm 0 4mm; padding-left: 7mm; }
+        li { margin-bottom: 2.5mm; }
+
+        .checklist {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .checklist li {
+            position: relative;
+            padding-left: 8mm;
+        }
+
+        .checklist li::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 1mm;
+            width: 4mm;
+            height: 4mm;
+            border: 1.2px solid var(--ink);
+        }
+
+        code {
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 9pt;
+        }
+
+        pre {
+            margin: 3mm 0 5mm;
+            padding: 3.5mm;
+            border: 1px solid var(--line);
+            background: #f7f8f7;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 4mm 0;
+            font-size: 9.5pt;
+        }
+
+        th, td {
+            border: 1px solid var(--line);
+            padding: 2.5mm;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: var(--soft);
+            font-family: "Trebuchet MS", Verdana, sans-serif;
+        }
+
+        .footer {
+            margin-top: 8mm;
+            padding-top: 3mm;
+            border-top: 1px solid var(--line);
+            color: var(--muted);
+            font-size: 8.5pt;
+        }
+
+        @page { size: A4; margin: 0; }
+
+        @media print {
+            body {
+                background: white;
+                font-size: 9pt;
+                line-height: 1.25;
+            }
+            main { width: auto; margin: 0; box-shadow: none; }
+            .page {
+                height: 297mm;
+                min-height: 0;
+                padding: 10mm 14mm;
+            }
+            header { padding: 4mm 0 3mm; margin-bottom: 4mm; }
+            h1 { font-size: 20pt; }
+            h2 { font-size: 14pt; margin-bottom: 2mm; }
+            h3 { font-size: 10.5pt; margin: 3mm 0 1mm; }
+            .subtitle { margin-top: 1mm; font-size: 9pt; }
+            .meta { gap: 4mm; margin: 3mm 0; }
+            .field { min-height: 8mm; padding-top: 3mm; font-size: 8.5pt; }
+            .notice { margin: 3mm 0; padding: 2.5mm 3mm; }
+            ol, ul { margin: 1mm 0 2mm; padding-left: 6mm; }
+            li { margin-bottom: 1.2mm; }
+            pre { margin: 2mm 0 3mm; padding: 2.5mm; }
+            table { margin: 2mm 0; font-size: 8.5pt; }
+            th, td { padding: 1.5mm; }
+            .footer { margin-top: 4mm; padding-top: 2mm; }
+        }
+    </style>
+</head>
+<body>
+<main>
+    <section class="page">
+        <header>
+            <h1>Spot Master</h1>
+            <p class="subtitle">Guia impresso de backup e recuperação após avaria</p>
+        </header>
+
+        <div class="meta">
+            <div class="field">Conta Google Drive:</div>
+            <div class="field">Responsável / contacto:</div>
+        </div>
+
+        <div class="notice warning">
+            <strong>Guardar este documento num local acessível.</strong><br>
+            O backup contém configurações e credenciais privadas. Não o partilhar publicamente.
+        </div>
+
+        <h2>1. Confirmar o backup diário</h2>
+        <p>No computador onde o sistema está atualmente instalado:</p>
+
+        <ol>
+            <li>Abra a pasta <code>C:\xampp\htdocs\spotify-ads-system-teste</code>.</li>
+            <li>Execute <strong>instalar_backup_diario.bat</strong> com duplo clique.</li>
+            <li>Confirme que aparece a mensagem <strong>“Tarefa criada”</strong>.</li>
+            <li>Abra <code>C:\BackupMySQL</code> e confirme que existem ficheiros com este formato:</li>
+        </ol>
+
+        <pre>spot-master-backup-AAAAMMDD-HHMMSS.zip</pre>
+
+        <p>A tarefa corre diariamente às <strong>23:00</strong> e conserva os <strong>5 backups mais recentes</strong>. Se o computador estiver indisponível nessa hora, a tarefa arranca quando voltar a estar disponível.</p>
+
+        <h3>Criar um backup imediatamente</h3>
+        <p>Abra o PowerShell na pasta do projeto e execute:</p>
+
+        <pre>.\backup-system.ps1 -Destination "C:\BackupMySQL" -RetentionCount 5</pre>
+
+        <h3>Confirmar a cópia no Google Drive</h3>
+        <ul class="checklist">
+            <li>O Google Drive para computador está instalado e iniciado.</li>
+            <li>A pasta <code>C:\BackupMySQL</code> está configurada para sincronização.</li>
+            <li>O ZIP mais recente aparece também em <strong>drive.google.com</strong>.</li>
+            <li>A conta Google tem autenticação de dois fatores ativa.</li>
+        </ul>
+
+        <div class="notice">
+            Um ficheiro existente apenas em <code>C:\BackupMySQL</code> não fica protegido contra avaria do disco. É obrigatório confirmar que foi enviado para o Google Drive.
+        </div>
+
+        <div class="footer">Página 1 de 2 · Rotina de prevenção</div>
+    </section>
+
+    <section class="page">
+        <header>
+            <h1>Recuperação num PC novo</h1>
+            <p class="subtitle">Executar estes passos pela ordem indicada</p>
+        </header>
+
+        <h2>2. Após avaria do computador</h2>
+
+        <ol>
+            <li>Instale <strong>XAMPP</strong>, <strong>Git</strong> e <strong>Composer</strong>.</li>
+            <li>No painel do XAMPP, inicie <strong>Apache</strong> e <strong>MySQL</strong>.</li>
+            <li>Abra o PowerShell e descarregue o programa:</li>
+        </ol>
+
+        <pre>cd C:\xampp\htdocs
+git clone https://github.com/ViCor44/spotify-ads-system-teste.git
+cd spotify-ads-system-teste</pre>
+
+        <ol start="4">
+            <li>Entre em <strong>drive.google.com</strong> e descarregue o ZIP mais recente para o novo computador.</li>
+            <li>Restaure o sistema, substituindo o caminho abaixo pelo caminho real do ZIP:</li>
+        </ol>
+
+        <pre>.\restore-system.ps1 -BackupFile "C:\Users\UTILIZADOR\Downloads\spot-master-backup-AAAAMMDD-HHMMSS.zip"</pre>
+
+        <ol start="6">
+            <li>Volte a instalar as duas tarefas automáticas:</li>
+        </ol>
+
+        <pre>.\register-robot-task.ps1
+.\instalar_backup_diario.bat</pre>
+
+        <ol start="7">
+            <li>Execute o diagnóstico:</li>
+        </ol>
+
+        <pre>.\setup-new-pc.ps1 -CheckOnly</pre>
+
+        <ol start="8">
+            <li>Abra no navegador:</li>
+        </ol>
+
+        <pre>http://127.0.0.1/spotify-ads-system-teste/public/</pre>
+
+        <ul class="checklist">
+            <li>Os anúncios aparecem e reproduzem corretamente.</li>
+            <li>Os horários aparecem no painel.</li>
+            <li>O Spotify está ligado; autorize novamente se for solicitado.</li>
+            <li>O painel indica que o robô está ativo após alguns minutos.</li>
+            <li>Foi criado um novo ZIP em <code>C:\BackupMySQL</code>.</li>
+            <li>O Google Drive está a sincronizar a pasta no novo computador.</li>
+        </ul>
+
+        <h2>3. Informação rápida</h2>
+        <table>
+            <tr><th>Elemento</th><th>Localização</th></tr>
+            <tr><td>Programa</td><td><code>C:\xampp\htdocs\spotify-ads-system-teste</code></td></tr>
+            <tr><td>Backups</td><td><code>C:\BackupMySQL</code> e Google Drive</td></tr>
+            <tr><td>Tarefa de backup</td><td><code>Spot Master - Backup diario</code></td></tr>
+            <tr><td>Tarefa do robô</td><td><code>Spot Master - Verificar agendamentos</code></td></tr>
+            <tr><td>Manual técnico</td><td><code>RECOVERY.md</code></td></tr>
+        </table>
+
+        <div class="notice warning">
+            Sem um ZIP sincronizado fora do computador, recupera-se o programa pelo GitHub, mas podem perder-se anúncios, horários e configurações.
+        </div>
+
+        <div class="footer">Página 2 de 2 · Procedimento de emergência</div>
+    </section>
+</main>
+</body>
+</html>
