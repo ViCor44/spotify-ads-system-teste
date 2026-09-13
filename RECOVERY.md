@@ -6,10 +6,12 @@ Este projeto inclui diagnóstico, instalação da base de dados, backup e restau
 
 1. Configure o Google Drive para sincronizar a pasta `C:\BackupMySQL`.
 2. Faça duplo clique em `instalar_backup_diario.bat`. A tarefa será executada diariamente às 23:00 e manterá os cinco backups mais recentes.
-3. Para criar um backup manual completo:
+3. Para criar um backup manual completo, faça duplo clique em `criar_backup_agora.bat`.
+
+   Em alternativa, execute:
 
    ```powershell
-   .\backup-system.ps1 -Destination "C:\BackupMySQL" -RetentionCount 5
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\backup-system.ps1" -Destination "C:\BackupMySQL" -RetentionCount 5
    ```
 
 4. Confirme o sistema depois de alterações ou atualizações:
@@ -43,13 +45,13 @@ No painel do XAMPP, inicie Apache e MySQL. Para manter os serviços disponíveis
 3. Restaure o ZIP mais recente:
 
    ```powershell
-   .\restore-system.ps1 -BackupFile "C:\BackupMySQL\spot-master-backup-AAAAMMDD-HHMMSS.zip"
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\restore-system.ps1" -BackupFile "C:\BackupMySQL\spot-master-backup-AAAAMMDD-HHMMSS.zip"
    ```
 
 4. Registe o robô para correr automaticamente a cada minuto:
 
    ```powershell
-   .\register-robot-task.ps1
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\register-robot-task.ps1"
    ```
 
 5. Abra `http://127.0.0.1/spotify-ads-system-teste/public/` e faça um anúncio de teste.
@@ -61,13 +63,13 @@ Se a pasta do projeto ou o endereço mudar, atualize `SPOTIFY_REDIRECT_URI` em `
 Execute:
 
 ```powershell
-.\setup-new-pc.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\setup-new-pc.ps1"
 ```
 
 Na primeira execução é criado `config/database.php`. Preencha os dados do MySQL, Spotify e ElevenLabs e execute novamente:
 
 ```powershell
-.\setup-new-pc.ps1 -RegisterTask
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\setup-new-pc.ps1" -RegisterTask
 ```
 
 O instalador instala as dependências Composer, cria a base de dados e as tabelas, prepara as pastas graváveis, cria os anúncios de fecho iniciais e regista o robô quando pedido.
@@ -93,7 +95,7 @@ No Agendador de Tarefas do Windows, a tarefa chama-se `Spot Master - Verificar a
 A tarefa de cópia de segurança chama-se `Spot Master - Backup diario`. Para a remover:
 
 ```powershell
-.\register-backup-task.ps1 -Uninstall
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\register-backup-task.ps1" -Uninstall
 ```
 
 ## Rotina recomendada

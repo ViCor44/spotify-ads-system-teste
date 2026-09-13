@@ -219,9 +219,9 @@
         <p>A tarefa corre diariamente às <strong>23:00</strong> e conserva os <strong>5 backups mais recentes</strong>. Se o computador estiver indisponível nessa hora, a tarefa arranca quando voltar a estar disponível.</p>
 
         <h3>Criar um backup imediatamente</h3>
-        <p>Abra o PowerShell na pasta do projeto e execute:</p>
+        <p>Execute <strong>criar_backup_agora.bat</strong> com duplo clique. Esta opção funciona mesmo quando o Windows bloqueia a execução direta de ficheiros PowerShell.</p>
 
-        <pre>.\backup-system.ps1 -Destination "C:\BackupMySQL" -RetentionCount 5</pre>
+        <pre>criar_backup_agora.bat</pre>
 
         <h3>Confirmar a cópia no Google Drive</h3>
         <ul class="checklist">
@@ -261,20 +261,20 @@ cd spotify-ads-system-teste</pre>
             <li>Restaure o sistema, substituindo o caminho abaixo pelo caminho real do ZIP:</li>
         </ol>
 
-        <pre>.\restore-system.ps1 -BackupFile "C:\Users\UTILIZADOR\Downloads\spot-master-backup-AAAAMMDD-HHMMSS.zip"</pre>
+        <pre>powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\restore-system.ps1" -BackupFile "C:\Users\UTILIZADOR\Downloads\spot-master-backup-AAAAMMDD-HHMMSS.zip"</pre>
 
         <ol start="6">
             <li>Volte a instalar as duas tarefas automáticas:</li>
         </ol>
 
-        <pre>.\register-robot-task.ps1
+        <pre>powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\register-robot-task.ps1"
 .\instalar_backup_diario.bat</pre>
 
         <ol start="7">
             <li>Execute o diagnóstico:</li>
         </ol>
 
-        <pre>.\setup-new-pc.ps1 -CheckOnly</pre>
+        <pre>powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\setup-new-pc.ps1" -CheckOnly</pre>
 
         <ol start="8">
             <li>Abra no navegador:</li>
