@@ -50,9 +50,7 @@ No painel do XAMPP, inicie Apache e MySQL. Para manter os serviços disponíveis
 
 4. Registe o robô para correr automaticamente a cada minuto:
 
-   ```powershell
-   powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\register-robot-task.ps1"
-   ```
+   Faça duplo clique em `instalar_robot.bat`. O instalador regista a tarefa e testa imediatamente o robô.
 
 5. Abra `http://127.0.0.1/spotify-ads-system-teste/public/` e faça um anúncio de teste.
 
@@ -83,6 +81,8 @@ Executar uma verificação manual:
 ```powershell
 .\run_checker.bat
 ```
+
+Se o Dashboard indicar que o robô está offline, faça duplo clique em `instalar_robot.bat` e atualize a página após a mensagem de sucesso.
 
 Remover a tarefa automática:
 
