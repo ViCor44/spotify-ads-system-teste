@@ -1,5 +1,7 @@
 param(
-    [string]$Destination = (Join-Path $PSScriptRoot 'backups')
+    [string]$Destination = (Join-Path $PSScriptRoot 'backups'),
+    [ValidateRange(1, 365)]
+    [int]$RetentionCount = 5
 )
 
 $ErrorActionPreference = 'Stop'
@@ -64,7 +66,16 @@ password="$escapedPassword"
 
     $archive = Join-Path $Destination "spot-master-backup-$timestamp.zip"
     Compress-Archive -Path (Join-Path $staging '*') -DestinationPath $archive -CompressionLevel Optimal
+
+    $expiredBackups = Get-ChildItem $Destination -Filter 'spot-master-backup-*.zip' -File |
+        Sort-Object LastWriteTime -Descending |
+        Select-Object -Skip $RetentionCount
+    foreach ($expiredBackup in $expiredBackups) {
+        Remove-Item $expiredBackup.FullName -Force
+    }
+
     Write-Host "Backup criado: $archive" -ForegroundColor Green
+    Write-Host "Retenção aplicada: últimos $RetentionCount backups." -ForegroundColor Green
     Write-Host 'Este ficheiro contém credenciais. Guarde-o num local externo e protegido.' -ForegroundColor Yellow
 } finally {
     Remove-Item $staging -Recurse -Force -ErrorAction SilentlyContinue

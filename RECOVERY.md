@@ -4,14 +4,15 @@ Este projeto inclui diagnóstico, instalação da base de dados, backup e restau
 
 ## Preparar agora
 
-1. Ligue um disco externo ou escolha uma pasta sincronizada e protegida.
-2. Crie regularmente um backup completo:
+1. Configure o Google Drive para sincronizar a pasta `C:\BackupMySQL`.
+2. Faça duplo clique em `instalar_backup_diario.bat`. A tarefa será executada diariamente às 23:00 e manterá os cinco backups mais recentes.
+3. Para criar um backup manual completo:
 
    ```powershell
-   .\backup-system.ps1 -Destination "E:\Backups\SpotMaster"
+   .\backup-system.ps1 -Destination "C:\BackupMySQL" -RetentionCount 5
    ```
 
-3. Confirme o sistema depois de alterações ou atualizações:
+4. Confirme o sistema depois de alterações ou atualizações:
 
    ```powershell
    .\setup-new-pc.ps1 -CheckOnly
@@ -42,7 +43,7 @@ No painel do XAMPP, inicie Apache e MySQL. Para manter os serviços disponíveis
 3. Restaure o ZIP mais recente:
 
    ```powershell
-   .\restore-system.ps1 -BackupFile "E:\Backups\SpotMaster\spot-master-backup-AAAAMMDD-HHMMSS.zip"
+   .\restore-system.ps1 -BackupFile "C:\BackupMySQL\spot-master-backup-AAAAMMDD-HHMMSS.zip"
    ```
 
 4. Registe o robô para correr automaticamente a cada minuto:
@@ -89,10 +90,16 @@ Remover a tarefa automática:
 
 No Agendador de Tarefas do Windows, a tarefa chama-se `Spot Master - Verificar agendamentos`. O painel considera o robô saudável quando `public/robot_heartbeat.log` foi atualizado nos últimos três minutos.
 
+A tarefa de cópia de segurança chama-se `Spot Master - Backup diario`. Para a remover:
+
+```powershell
+.\register-backup-task.ps1 -Uninstall
+```
+
 ## Rotina recomendada
 
-- Backup diário para outro disco ou armazenamento sincronizado.
-- Manter pelo menos os últimos 7 backups.
+- Backup diário para `C:\BackupMySQL`, com essa pasta sincronizada pelo Google Drive.
+- A tarefa mantém automaticamente os últimos 5 backups.
 - Uma vez por mês, testar o ZIP numa instalação separada.
 - Depois de mudar credenciais, gerar imediatamente um novo backup.
 - Se credenciais entrarem por engano no Git, revogá-las nos respetivos fornecedores; apagar apenas o ficheiro do commit não invalida a chave.
