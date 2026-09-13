@@ -1,8 +1,10 @@
 public/robot_heartbeat.log
 public/traslate_debug.json
-config/
+config/database.php
+config/google-tts-sa*.json
 storage/
 uploads/
 key.pem
 cert.pem
 *.log
+backups/
