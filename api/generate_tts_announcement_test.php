@@ -7,6 +7,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../config/database.php';
 
 use App\Database;
+use App\VehicleColor;
 use GuzzleHttp\Client as HttpClient;
 use Google\Cloud\Translate\V2\TranslateClient;
 
@@ -337,9 +338,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['languages'])) {
                 $plateSpelled = implode(', ', $spelledParts);
 
                 if ($color !== '' && !empty($cfg['plate_text_color'])) {
-                    // Traduz a cor (input em PT) para o idioma alvo.
-                    $target      = $translateTarget[$lang] ?? $lang;
-                    $colorLocal  = ($target === 'pt') ? $color : gtranslate_text($color, $target, 'pt');
+                    $target = $translateTarget[$lang] ?? $lang;
+                    $colorLocal = VehicleColor::translate($color, $target)
+                        ?? (($target === 'pt') ? $color : gtranslate_text($color, $target, 'pt'));
                     $textToSpeech = sprintf($cfg['plate_text_color'], $make, $model, $colorLocal, $plateSpelled, $plateSpelled);
                 } else {
                     $textToSpeech = sprintf($cfg['plate_text'], $make, $model, $plateSpelled, $plateSpelled);
