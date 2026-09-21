@@ -32,6 +32,7 @@ if ($token_exists) {
         $spotifyClient = new SpotifyClient();
         $playbackState = $spotifyClient->getPlaybackState();
     } catch (Exception $e) {
+        $token_exists = false;
         $error_message = $e->getMessage();
     }
 }
