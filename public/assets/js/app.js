@@ -31,9 +31,21 @@ document.addEventListener('DOMContentLoaded', function () {
         adPlayer.play().catch(() => {});
         adPlayer.pause();
         if (audioPrompt) audioPrompt.style.display = 'none';
-        if (!pollingInterval) pollingInterval = setInterval(checkStatus, 1500);
+        // O cron publica a ordem no segundo 00; meio segundo mantém o atraso
+        // perceptível abaixo de um segundo enquanto esta página estiver ativa.
+        if (!pollingInterval) pollingInterval = setInterval(checkStatus, 500);
         console.log('Leitor de anuncios ativado.');
     }
+
+    // O browser pode reduzir drasticamente os timers de separadores em segundo
+    // plano. Ao regressar à janela, verifica imediatamente se ficou uma ordem
+    // por tratar em vez de esperar pelo próximo intervalo.
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && pollingInterval) checkStatus();
+    });
+    window.addEventListener('focus', () => {
+        if (pollingInterval) checkStatus();
+    });
 
     // Limpa o ficheiro de status no servidor
     const clearStatusFile = () => fetch(`${rootPath}/api/clear_status.php`, { method: 'POST' });

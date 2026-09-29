@@ -15,18 +15,16 @@ use SpotMaster\Api\StatusStore;
 date_default_timezone_set('Europe/Lisbon');
 $lockFilePath = __DIR__ . '/schedule.lock';
 $processedScheduleFilePath = __DIR__ . '/last_processed_schedule.json';
+$lookbackSeconds = 5 * 60;
 $heartbeatFile = __DIR__ . '/../public/robot_heartbeat.log'; // Caminho na pasta public
 
-// Lógica de Bloqueio (Lock File) para impedir execuções sobrepostas
-if (file_exists($lockFilePath)) {
-    // Se o ficheiro de lock foi criado há menos de 58 segundos, sai imediatamente.
-    if (time() - filemtime($lockFilePath) < 58) {
-        echo "AVISO: Processo executado recentemente. Abortando para evitar duplicacao.\n";
-        exit;
-    }
+// Lock real: o teste por data do ficheiro tinha uma corrida e também podia
+// descartar uma execução válida quando o Agendador arrancava alguns segundos cedo.
+$lockHandle = fopen($lockFilePath, 'c');
+if ($lockHandle === false || !flock($lockHandle, LOCK_EX | LOCK_NB)) {
+    echo "AVISO: Ja existe uma verificacao em curso.\n";
+    exit;
 }
-// Cria/atualiza o ficheiro de lock imediatamente para "reservar" este minuto
-touch($lockFilePath);
 
 // Lógica de Pulsação (Heartbeat) para o Dashboard saber que o robô está vivo
 file_put_contents($heartbeatFile, time());
@@ -67,7 +65,19 @@ try {
     }
 
     $scheduleFound = null;
+    $scheduledTimeFound = null;
     $nowTimestamp = $now->getTimestamp();
+
+    $processedData = [];
+    if (file_exists($processedScheduleFilePath)) {
+        $processedData = json_decode((string) file_get_contents($processedScheduleFilePath), true);
+        $processedData = is_array($processedData) ? $processedData : [];
+    }
+    // Compatibilidade com o formato antigo, que guardava apenas uma ocorrência.
+    $processedOccurrences = $processedData['occurrences'] ?? [];
+    if (isset($processedData['occurrence_key'])) {
+        $processedOccurrences[$processedData['occurrence_key']] = $processedData['processed_at'] ?? $now->format(DateTime::ATOM);
+    }
 
     // 2. Itera sobre os agendamentos em PHP para encontrar uma correspondência no minuto atual
     //    Isto é mais robusto contra problemas de fuso horário da base de dados.
@@ -75,25 +85,24 @@ try {
         $scheduledTime = new DateTime($now->format('Y-m-d') . ' ' . $schedule['play_at']);
         $scheduledTimestamp = $scheduledTime->getTimestamp();
         
-        // Verifica se a hora agendada está no minuto atual (desde o segundo 0 até ao 59)
-        if ($nowTimestamp >= $scheduledTimestamp && ($nowTimestamp - $scheduledTimestamp) < 60) {
+        $occurrenceKey = $schedule['id'] . '@' . $scheduledTime->format('Y-m-d H:i');
+
+        // Aceita atrasos do Agendador até cinco minutos e escolhe a ocorrência
+        // ainda não processada mais antiga. Assim, um arranque tardio não perde o anúncio.
+        if ($nowTimestamp >= $scheduledTimestamp
+            && ($nowTimestamp - $scheduledTimestamp) <= $lookbackSeconds
+            && !isset($processedOccurrences[$occurrenceKey])
+            && ($scheduledTimeFound === null || $scheduledTime < $scheduledTimeFound)) {
             $scheduleFound = $schedule;
-            break; // Encontrámos o agendamento para este minuto
+            $scheduledTimeFound = $scheduledTime;
         }
     }
 
     if ($scheduleFound) {
         echo "AGENDAMENTO ENCONTRADO (ID: " . $scheduleFound['id'] . ")!\n";
 
+        $scheduledTime = $scheduledTimeFound;
         $scheduleOccurrenceKey = $scheduleFound['id'] . '@' . $scheduledTime->format('Y-m-d H:i');
-        $lastProcessed = null;
-        if (file_exists($processedScheduleFilePath)) {
-            $lastProcessed = json_decode((string) file_get_contents($processedScheduleFilePath), true);
-        }
-        if (is_array($lastProcessed) && ($lastProcessed['occurrence_key'] ?? null) === $scheduleOccurrenceKey) {
-            echo "Agendamento deste minuto ja foi processado. Ignorando repeticao.\n";
-            exit;
-        }
 
         $announcementId = $scheduleFound['announcement_id'];
         
@@ -122,12 +131,19 @@ try {
             $logStmt->execute([$announcement['title']]);
             echo "Atividade registada na base de dados.\n";
 
+            $processedOccurrences[$scheduleOccurrenceKey] = $now->format(DateTime::ATOM);
+            // Mantém apenas ocorrências recentes para o ficheiro não crescer indefinidamente.
+            $retentionLimit = (clone $now)->modify('-8 days')->getTimestamp();
+            $processedOccurrences = array_filter(
+                $processedOccurrences,
+                static fn ($processedAt) => (strtotime((string) $processedAt) ?: 0) >= $retentionLimit
+            );
             file_put_contents($processedScheduleFilePath, json_encode([
-                'occurrence_key' => $scheduleOccurrenceKey,
-                'schedule_id' => (int)$scheduleFound['id'],
-                'announcement_id' => (int)$announcementId,
-                'processed_at' => $now->format(DateTime::ATOM)
-            ]), LOCK_EX);
+                'occurrences' => $processedOccurrences,
+                'last_schedule_id' => (int) $scheduleFound['id'],
+                'last_announcement_id' => (int) $announcementId,
+                'updated_at' => $now->format(DateTime::ATOM)
+            ], JSON_UNESCAPED_SLASHES), LOCK_EX);
             echo "Marcador de execucao do minuto atualizado.\n";
             
             echo "Processo concluido com sucesso.\n";

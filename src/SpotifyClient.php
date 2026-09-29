@@ -102,8 +102,12 @@ class SpotifyClient
         return $this->makeRequest('GET', 'v1/me/player');
     }
 
-    public function pausePlayback(): ?\stdClass
+    public function pausePlayback(bool $force = false): ?\stdClass
     {
+        if ($force) {
+            return $this->makeRequest('PUT', 'v1/me/player/pause');
+        }
+
         $state = $this->getPlaybackState();
         if ($state && isset($state->is_playing) && $state->is_playing) {
             return $this->makeRequest('PUT', 'v1/me/player/pause');

@@ -24,9 +24,11 @@ $action = New-ScheduledTaskAction `
     -Execute $phpWin `
     -Argument ('-f "{0}"' -f $checkerScript) `
     -WorkingDirectory $PSScriptRoot
+$firstRun = (Get-Date).AddMinutes(1)
+$firstRun = $firstRun.AddSeconds(-$firstRun.Second).AddMilliseconds(-$firstRun.Millisecond)
 $trigger = New-ScheduledTaskTrigger `
     -Once `
-    -At (Get-Date).AddMinutes(1) `
+    -At $firstRun `
     -RepetitionInterval (New-TimeSpan -Minutes 1) `
     -RepetitionDuration (New-TimeSpan -Days 3650)
 $settings = New-ScheduledTaskSettingsSet `

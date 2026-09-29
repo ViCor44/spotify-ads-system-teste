@@ -31,7 +31,12 @@ try {
     $spotifyClient = new SpotifyClient();
     $state = $spotifyClient->getPlaybackState();
     $initialState = ($state && $state->is_playing) ? 'playing' : 'paused';
-    $spotifyClient->pausePlayback();
+    // O estado acabou de ser consultado acima. Se estava a tocar, envia a pausa
+    // diretamente; voltar a consultar aqui criava uma corrida em que a segunda
+    // leitura podia falhar e o pedido era marcado como pausado sem o estar.
+    if ($initialState === 'playing') {
+        $spotifyClient->pausePlayback(true);
+    }
 
     $latestStatus = $statusStore->read();
     if (($latestStatus['play_id'] ?? '') === $playId && ($latestStatus['status'] ?? '') === 'play') {
