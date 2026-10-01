@@ -15,6 +15,40 @@ document.addEventListener('DOMContentLoaded', function () {
     let lastPlayedKey = null; // Dedup: evita tocar o mesmo anúncio duas vezes se o status.json ainda não foi limpo
     let isFinishingAd = false;
     let playbackWatchdog = null;
+    let silentAudioUrl = null;
+    let audioKeepAlive = null;
+
+    const getAnnouncementAudioUrl = (path) => {
+        const normalizedPath = String(path || '').replace(/\\/g, '/');
+        const encodedPath = normalizedPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
+        return `${rootPath}/public${encodedPath.startsWith('/') ? encodedPath : `/${encodedPath}`}`;
+    };
+
+    const createSilentAudioUrl = () => {
+        const sampleCount = 800;
+        const buffer = new ArrayBuffer(44 + sampleCount * 2);
+        const view = new DataView(buffer);
+        const writeTag = (offset, tag) => {
+            for (let index = 0; index < tag.length; index++) {
+                view.setUint8(offset + index, tag.charCodeAt(index));
+            }
+        };
+
+        writeTag(0, 'RIFF');
+        view.setUint32(4, buffer.byteLength - 8, true);
+        writeTag(8, 'WAVE');
+        writeTag(12, 'fmt ');
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true);
+        view.setUint16(22, 1, true);
+        view.setUint32(24, 8000, true);
+        view.setUint32(28, 16000, true);
+        view.setUint16(32, 2, true);
+        view.setUint16(34, 16, true);
+        writeTag(36, 'data');
+        view.setUint32(40, sampleCount * 2, true);
+        return URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }));
+    };
     
     // --- 2. FUNÇÕES ---
 
@@ -26,15 +60,26 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     // Inicia o leitor de anúncios e o polling para o status.json
-    function startPlayer() {
-        if (!adPlayer) return;
-        adPlayer.play().catch(() => {});
-        adPlayer.pause();
+    async function startPlayer() {
+        if (!adPlayer || pollingInterval) return;
+        silentAudioUrl = createSilentAudioUrl();
+        audioKeepAlive = new Audio(silentAudioUrl);
+        audioKeepAlive.loop = true;
+        try {
+            await audioKeepAlive.play();
+        } catch (error) {
+            console.error('Não foi possível ativar o leitor de anúncios:', error);
+            audioKeepAlive = null;
+            URL.revokeObjectURL(silentAudioUrl);
+            silentAudioUrl = null;
+            return false;
+        }
         if (audioPrompt) audioPrompt.style.display = 'none';
         // O cron publica a ordem no segundo 00; meio segundo mantém o atraso
         // perceptível abaixo de um segundo enquanto esta página estiver ativa.
         if (!pollingInterval) pollingInterval = setInterval(checkStatus, 500);
         console.log('Leitor de anuncios ativado.');
+        return true;
     }
 
     // O browser pode reduzir drasticamente os timers de separadores em segundo
@@ -196,14 +241,14 @@ document.addEventListener('DOMContentLoaded', function () {
                             finishCurrentAnnouncement();
                         });
                         gongPlayer.onended = () => {
-                            adPlayer.src = `${rootPath}/public${data.url}`;
+                            adPlayer.src = getAnnouncementAudioUrl(data.url);
                             adPlayer.play().catch(e => {
                                 console.error('Erro ao tocar anúncio:', e);
                                 finishCurrentAnnouncement();
                             });
                         };
                     } else {
-                        adPlayer.src = `${rootPath}/public${data.url}`;
+                        adPlayer.src = getAnnouncementAudioUrl(data.url);
                         adPlayer.play().catch(e => {
                             console.error('Erro ao tocar anúncio:', e);
                             finishCurrentAnnouncement();
@@ -411,8 +456,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (enableAudioButton) {
         enableAudioButton.addEventListener('click', () => {
-            localStorage.setItem('audioEnabled', 'true');
-            startPlayer();
+            startPlayer().then(activated => {
+                if (activated) localStorage.setItem('audioEnabled', 'true');
+            }).catch(error => console.error('Falha ao iniciar o leitor de anúncios:', error));
         });
     }
 
