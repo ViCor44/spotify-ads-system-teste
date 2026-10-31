@@ -594,6 +594,21 @@ body.theme-dark {
     border: 1px solid #282828;
 }
 
+.theme-dark table {
+    color: var(--text-white);
+    background-color: #1e1e1e;
+}
+
+.theme-dark thead tr,
+.theme-dark tbody tr:nth-of-type(even) {
+    background-color: #282828;
+}
+
+.theme-dark thead tr,
+.theme-dark tbody tr {
+    border-bottom-color: #383838;
+}
+
 /* Altera a cor de todo o texto dentro da área de conteúdo */
 .theme-dark h1,
 .theme-dark h2,
